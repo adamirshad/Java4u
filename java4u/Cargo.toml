@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = ["crates/java4u-core", "crates/java4u-cli", "crates/java4u-gui"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"

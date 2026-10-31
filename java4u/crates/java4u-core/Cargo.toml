@@ -1,0 +1,23 @@
+[package]
+name = "java4u-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Core library for the java4u Minecraft launcher"
+
+[dependencies]
+tokio = { version = "1", features = ["fs", "io-util", "rt-multi-thread", "macros"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.10"
+hex = "0.4"
+thiserror = "1"
+tracing = "0.1"
+directories = "5"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+uuid = "1"
+md5 = "0.7"
+sysinfo = "0.32"
+image = { version = "0.25.2", default-features = false, features = ["jpeg", "png", "webp", "gif", "bmp"] }

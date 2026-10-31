@@ -1,0 +1,16 @@
+[package]
+name = "java4u-gui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Graphical front-end for the java4u Minecraft launcher"
+
+[[bin]]
+name = "java4u-gui"
+path = "src/main.rs"
+
+[dependencies]
+java4u-core = { path = "../java4u-core" }
+eframe = "0.29"
+rfd = "0.15"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

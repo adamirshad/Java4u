@@ -1,0 +1,18 @@
+[package]
+name = "java4u-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Command-line front-end for the java4u Minecraft launcher"
+
+[[bin]]
+name = "java4u"
+path = "src/main.rs"
+
+[dependencies]
+java4u-core = { path = "../java4u-core" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+clap = { version = "4", features = ["derive", "env"] }
+anyhow = "1"
+indicatif = "0.17"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
