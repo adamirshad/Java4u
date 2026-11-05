@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goose</title>
+<link rel="icon" href="/goose.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<div id="bg"></div>
+<div id="dim"></div>
+
+<header>
+  <img src="/goose.svg" alt="" class="logo">
+  <h1>Goose</h1>
+  <nav>
+    <button data-tab="play" class="tab active">Play</button>
+    <button data-tab="instances" class="tab">Instances</button>
+    <button data-tab="accounts" class="tab">Accounts</button>
+    <button data-tab="appearance" class="tab">Appearance</button>
+  </nav>
+  <span class="spacer"></span>
+  <button id="quit" class="ghost" title="Close Goose">Quit</button>
+</header>
+
+<main>
+  <!-- Play -->
+  <section id="tab-play" class="panel">
+    <p id="play-empty" class="hidden">You have no instances yet. Create one on the Instances tab.</p>
+    <div id="play-form">
+      <div class="row">
+        <label for="play-instance">Instance</label>
+        <select id="play-instance"></select>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="play-offline"> Offline mode (testing only)</label>
+        <input type="text" id="play-offline-name" class="hidden" maxlength="16" placeholder="username">
+        <span id="play-no-account" class="hidden muted">No account yet. Sign in on the Accounts tab.</span>
+        <span id="play-account-wrap" class="hidden">
+          <label for="play-account">Account</label>
+          <select id="play-account"></select>
+        </span>
+      </div>
+      <button id="play" class="play">Play</button>
+      <div id="progress" class="hidden">
+        <progress id="progress-bar" max="1" value="0"></progress>
+        <span id="progress-text"></span>
+      </div>
+    </div>
+    <pre id="log"></pre>
+  </section>
+
+  <!-- Instances -->
+  <section id="tab-instances" class="panel hidden">
+    <h2>Instances</h2>
+    <div class="row">
+      <label for="new-name">New:</label>
+      <input type="text" id="new-name" placeholder="name" maxlength="64">
+      <select id="new-version"></select>
+      <button id="create">Create</button>
+      <label class="check"><input type="checkbox" id="show-snapshots"> snapshots</label>
+    </div>
+    <hr>
+    <div class="split">
+      <ul id="instance-list" class="list"></ul>
+      <div id="editor">
+        <p id="editor-empty">Select an instance.</p>
+        <div id="editor-form" class="hidden">
+          <h3 id="editor-title"></h3>
+          <div class="row">
+            <label for="memory">Memory</label>
+            <input type="range" id="memory" min="1024" step="256">
+            <output id="memory-out"></output>
+            <button id="memory-auto" title="Pick a size that suits this PC">Auto</button>
+          </div>
+          <div class="row">
+            <label for="profile">Optimisation</label>
+            <select id="profile"></select>
+          </div>
+          <p id="profile-desc" class="muted"></p>
+          <div class="row">
+            <label for="jvm-args">Extra JVM args</label>
+            <input type="text" id="jvm-args" class="wide">
+          </div>
+          <div class="row">
+            <label for="java-path">Java override</label>
+            <input type="text" id="java-path" class="wide" placeholder="empty = automatic (recommended)">
+          </div>
+          <div class="row">
+            <button id="save">Save</button>
+            <button id="delete">Delete...</button>
+            <span id="confirm-delete" class="hidden">
+              <span class="danger">This deletes worlds and mods too.</span>
+              <button id="delete-yes" class="danger-btn">Yes, delete</button>
+              <button id="delete-no">Cancel</button>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Accounts -->
+  <section id="tab-accounts" class="panel hidden">
+    <h2>Microsoft accounts</h2>
+    <ul id="account-list" class="list plain"></ul>
+    <hr>
+    <div class="row">
+      <label for="client-id">Azure client ID</label>
+      <input type="text" id="client-id" class="wide">
+    </div>
+    <button id="login">Sign in with Microsoft</button>
+    <div id="device-code" class="box hidden">
+      <p>1. Open the Microsoft sign-in page:</p>
+      <p><a id="device-uri" target="_blank" rel="noopener noreferrer"></a></p>
+      <p>2. Enter this code:</p>
+      <p id="device-user-code" class="code"></p>
+      <p class="muted">Waiting for you to finish...</p>
+    </div>
+  </section>
+
+  <!-- Appearance -->
+  <section id="tab-appearance" class="panel hidden">
+    <h2>Wallpaper</h2>
+    <p>Choose any image from your computer, or drop an image file onto this window.
+       Big images are shrunk and stored in Goose's own folder.</p>
+    <div class="row">
+      <label class="button" for="wallpaper-file">Choose image...</label>
+      <input type="file" id="wallpaper-file" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,image/*" class="hidden">
+      <button id="no-wallpaper">No wallpaper</button>
+    </div>
+    <div class="row">
+      <label for="dim-slider">Darkening</label>
+      <input type="range" id="dim-slider" min="0" max="0.9" step="0.01">
+    </div>
+    <hr>
+    <p id="wallpaper-count"></p>
+    <ul id="wallpaper-list" class="list plain"></ul>
+  </section>
+</main>
+
+<footer id="status"></footer>
+<div id="drop" class="hidden">Drop an image to use it as wallpaper</div>
+</body>
+</html>
