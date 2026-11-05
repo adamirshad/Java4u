@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2c2158"/>
+      <stop offset="0.35" stop-color="#6b3f8f"/>
+      <stop offset="0.6" stop-color="#d0607a"/>
+      <stop offset="0.78" stop-color="#f39a4c"/>
+      <stop offset="1" stop-color="#ffd27a"/>
+    </linearGradient>
+    <linearGradient id="lake" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6a35a"/>
+      <stop offset="0.5" stop-color="#b9568a"/>
+      <stop offset="1" stop-color="#4b3478"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff3c4" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ffb35c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- sky, clouds, sun -->
+  <rect width="1200" height="400" fill="url(#sky)"/>
+  <g fill="#f7b98a" opacity="0.55">
+    <rect x="120" y="70" width="140" height="12"/><rect x="150" y="58" width="80" height="12"/>
+    <rect x="860" y="90" width="170" height="12"/><rect x="900" y="78" width="90" height="12"/>
+    <rect x="470" y="40" width="110" height="10"/>
+  </g>
+  <circle cx="760" cy="215" r="120" fill="url(#glow)"/>
+  <rect x="725" y="180" width="70" height="70" fill="#fff1b8"/>
+
+  <!-- far mountains -->
+  <polygon fill="#7a4b8f" points="0,250 0,190 40,190 40,170 80,170 80,150 120,150 120,130 160,130 160,150 200,150 200,170 240,170 240,160 280,160 280,140 320,140 320,120 360,120 360,140 400,140 400,170 440,170 440,200 480,200 480,250"/>
+  <polygon fill="#7a4b8f" points="880,250 880,200 920,200 920,170 960,170 960,140 1000,140 1000,110 1040,110 1040,130 1080,130 1080,150 1120,150 1120,170 1160,170 1160,160 1200,160 1200,250"/>
+  <!-- near hills -->
+  <polygon fill="#4f3473" points="0,290 0,230 60,230 60,215 120,215 120,200 180,200 180,220 240,220 240,240 300,240 300,255 360,255 360,270 420,270 420,290"/>
+  <polygon fill="#4f3473" points="820,290 820,260 880,260 880,240 940,240 940,220 1000,220 1000,200 1060,200 1060,215 1120,215 1120,200 1200,200 1200,290"/>
+
+  <!-- lake with sun reflection -->
+  <rect x="0" y="285" width="1200" height="60" fill="url(#lake)"/>
+  <g fill="#ffe7a8" opacity="0.8">
+    <rect x="720" y="292" width="80" height="4"/><rect x="730" y="302" width="60" height="4"/>
+    <rect x="740" y="312" width="40" height="4"/><rect x="748" y="322" width="24" height="3"/>
+  </g>
+
+  <!-- left forest (dark pines) -->
+  <g fill="#1d3b26">
+    <rect x="0" y="200" width="300" height="100"/>
+    <rect x="20" y="170" width="40" height="40"/><rect x="30" y="150" width="20" height="30"/>
+    <rect x="90" y="180" width="50" height="30"/><rect x="100" y="155" width="30" height="35"/><rect x="108" y="140" width="14" height="20"/>
+    <rect x="170" y="175" width="44" height="30"/><rect x="180" y="155" width="24" height="25"/>
+    <rect x="240" y="185" width="50" height="25"/><rect x="250" y="165" width="30" height="25"/>
+  </g>
+  <g fill="#2b5a33">
+    <rect x="0" y="230" width="340" height="70"/>
+    <rect x="300" y="215" width="40" height="30"/>
+  </g>
+  <!-- pink blossom trees -->
+  <g fill="#c862b8">
+    <rect x="60" y="215" width="50" height="26"/><rect x="70" y="203" width="30" height="14"/>
+    <rect x="210" y="222" width="46" height="24"/><rect x="220" y="210" width="26" height="14"/>
+    <rect x="1010" y="225" width="48" height="24"/><rect x="1020" y="212" width="28" height="15"/>
+  </g>
+  <g fill="#e48ad3">
+    <rect x="70" y="215" width="14" height="8"/><rect x="222" y="224" width="12" height="8"/><rect x="1022" y="227" width="12" height="8"/>
+  </g>
+
+  <!-- right forest -->
+  <g fill="#1d3b26">
+    <rect x="880" y="210" width="320" height="90"/>
+    <rect x="1120" y="120" width="80" height="100"/><rect x="1100" y="150" width="40" height="70"/>
+    <rect x="1150" y="80" width="50" height="50"/>
+  </g>
+  <g fill="#2b5a33"><rect x="860" y="250" width="340" height="50"/></g>
+  <!-- big tree trunk at the right edge -->
+  <rect x="1165" y="200" width="22" height="110" fill="#5a3a22"/>
+
+  <!-- cabin -->
+  <g>
+    <rect x="930" y="215" width="130" height="75" fill="#7b4a28"/>
+    <rect x="930" y="215" width="130" height="8" fill="#5c3519"/>
+    <polygon fill="#4b2a14" points="918,218 918,206 932,206 932,194 946,194 946,182 960,182 960,170 1030,170 1030,182 1044,182 1044,194 1058,194 1058,206 1072,206 1072,218"/>
+    <rect x="960" y="150" width="70" height="22" fill="#6a3c1e"/>
+    <rect x="1035" y="140" width="14" height="40" fill="#555"/>
+    <g fill="#ffcf5a">
+      <rect x="945" y="235" width="22" height="20"/><rect x="985" y="235" width="22" height="20"/>
+      <rect x="1025" y="235" width="22" height="20"/><rect x="975" y="155" width="16" height="12"/>
+      <rect x="1000" y="155" width="16" height="12"/>
+    </g>
+    <rect x="990" y="262" width="20" height="28" fill="#3d2410"/>
+    <!-- warm reflection of the windows -->
+    <g fill="#ffcf5a" opacity="0.45">
+      <rect x="945" y="300" width="22" height="5"/><rect x="985" y="300" width="22" height="5"/><rect x="1025" y="300" width="22" height="5"/>
+    </g>
+  </g>
+
+  <!-- foreground grass and dirt -->
+  <rect x="0" y="342" width="1200" height="14" fill="#4fae3f"/>
+  <rect x="0" y="356" width="1200" height="44" fill="#6b4a2b"/>
+  <g fill="#3d8a32">
+    <rect x="0" y="340" width="60" height="8"/><rect x="140" y="338" width="40" height="8"/>
+    <rect x="420" y="339" width="70" height="8"/><rect x="700" y="338" width="50" height="8"/>
+    <rect x="1040" y="339" width="60" height="8"/>
+  </g>
+  <g fill="#86593a">
+    <rect x="30" y="368" width="20" height="10"/><rect x="190" y="380" width="24" height="10"/>
+    <rect x="510" y="372" width="18" height="10"/><rect x="820" y="384" width="22" height="10"/>
+    <rect x="1110" y="370" width="20" height="10"/>
+  </g>
+  <g fill="#c862b8">
+    <rect x="300" y="334" width="8" height="8"/><rect x="560" y="333" width="8" height="8"/><rect x="880" y="334" width="8" height="8"/>
+  </g>
+  <g fill="#ffd94a">
+    <rect x="360" y="335" width="6" height="6"/><rect x="640" y="334" width="6" height="6"/><rect x="980" y="335" width="6" height="6"/>
+  </g>
+</svg>

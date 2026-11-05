@@ -70,6 +70,8 @@ type Server struct {
 	versionsErr string
 	settings    core.Settings
 	lastSeen    time.Time
+
+	cache contentCache
 }
 
 // Start listens on addr (normally "127.0.0.1:0") and returns the server and the URL
@@ -184,6 +186,7 @@ func (s *Server) routes() http.Handler {
 	mux.Handle("GET /app.js", files)
 	mux.Handle("GET /style.css", files)
 	mux.Handle("GET /goose.svg", files)
+	mux.Handle("GET /hero.svg", files)
 
 	mux.HandleFunc("GET /api/state", s.auth(s.handleState))
 	mux.HandleFunc("GET /api/data", s.auth(s.handleData))
@@ -198,6 +201,9 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /api/wallpapers/delete", s.auth(s.handleDeleteWallpaper))
 	mux.HandleFunc("GET /wallpapers/{name}", s.auth(s.handleWallpaperFile))
 	mux.HandleFunc("POST /api/quit", s.auth(s.handleQuit))
+	mux.HandleFunc("GET /api/news", s.auth(s.handleNews))
+	mux.HandleFunc("GET /api/browse", s.auth(s.handleBrowse))
+	mux.HandleFunc("GET /api/avatar/{uuid}", s.auth(s.handleAvatar))
 
 	return s.checkHost(mux)
 }
@@ -262,7 +268,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	page, _ := webFS.ReadFile("web/index.html")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'")
+	w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https://cdn.modrinth.com https://launchercontent.mojang.com; style-src 'self'; script-src 'self'; frame-ancestors 'none'")
 	w.Write(page)
 }
 
@@ -362,6 +368,7 @@ func (s *Server) handleData(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, map[string]any{
 		"goose_version":  core.Version,
+		"data_dir":       s.dirs.Root,
 		"instances":      instances,
 		"accounts":       accounts,
 		"has_client_id":  store.ClientID != "",
@@ -665,6 +672,9 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		WallpaperDim    *float64 `json:"wallpaper_dim"`
 		Wallpaper       *string  `json:"wallpaper"`
 		OfflineUsername *string  `json:"offline_username"`
+		PlayOffline     *bool    `json:"play_offline"`
+		LastAccount     *string  `json:"last_account"`
+		LastInstance    *string  `json:"last_instance"`
 	}
 	if !readJSON(w, r, &req) {
 		return
@@ -687,6 +697,15 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.OfflineUsername != nil {
 		s.settings.OfflineUsername = *req.OfflineUsername
+	}
+	if req.PlayOffline != nil {
+		s.settings.PlayOffline = *req.PlayOffline
+	}
+	if req.LastAccount != nil {
+		s.settings.LastAccount = *req.LastAccount
+	}
+	if req.LastInstance != nil {
+		s.settings.LastInstance = *req.LastInstance
 	}
 	settings := s.settings
 	s.mu.Unlock()

@@ -123,6 +123,30 @@ func TestInstancesAndSettings(t *testing.T) {
 	}
 }
 
+func TestContentInputChecks(t *testing.T) {
+	s, url, c := start(t)
+	base := "http://" + s.host
+	c.Get(url)
+
+	resp, _ := c.Get(base + "/api/browse?type=plugin")
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("bad browse type: %d", resp.StatusCode)
+	}
+	resp, _ = c.Get(base + "/api/avatar/not-a-uuid")
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("bad uuid: %d", resp.StatusCode)
+	}
+
+	// Only images from the hosts the page's CSP allows get through.
+	if imageURL("/v2/images/x.jpg") != "https://launchercontent.mojang.com/v2/images/x.jpg" ||
+		imageURL("//evil.example/x.jpg") != "" || imageURL("https://evil.example/x.jpg") != "" {
+		t.Fatal("imageURL")
+	}
+	if modrinthImage("https://cdn.modrinth.com/data/a.png") == "" || modrinthImage("https://evil.example/a.png") != "" {
+		t.Fatal("modrinthImage")
+	}
+}
+
 func TestWallpaperUpload(t *testing.T) {
 	s, url, c := start(t)
 	base := "http://" + s.host

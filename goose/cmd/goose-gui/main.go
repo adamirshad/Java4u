@@ -96,7 +96,7 @@ func openWindow(url string) error {
 		if _, err := os.Stat(b); err != nil {
 			continue
 		}
-		cmd := exec.Command(b, "--app="+url, "--window-size=1000,680", "--new-window")
+		cmd := exec.Command(b, "--app="+url, "--window-size=1360,860", "--new-window")
 		if err := cmd.Start(); err == nil {
 			go cmd.Wait()
 			return nil

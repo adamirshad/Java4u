@@ -13,6 +13,9 @@ type Settings struct {
 	OfflineUsername string  `json:"offline_username"`
 	LastInstance    string  `json:"last_instance,omitempty"`
 	ShowSnapshots   bool    `json:"show_snapshots"`
+	// PlayOffline launches with OfflineUsername instead of a Microsoft account (testing only).
+	PlayOffline bool   `json:"play_offline"`
+	LastAccount string `json:"last_account,omitempty"`
 }
 
 func DefaultSettings() Settings {

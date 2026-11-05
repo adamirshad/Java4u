@@ -27,13 +27,19 @@ On your own machine, install Go 1.25 or newer from https://go.dev/dl, then run t
 
     go run ./cmd/goose-gui
 
-The app has four tabs: Play, Instances, Accounts and Appearance. The interface is a local web page
+The sidebar has Home, Versions, Mods, Modpacks, Account, Settings and About. The Home page has:
+- A banner with a big **Launch Game** button. The banner shows a pixel-art scene or your own
+  picture, and rotates through the latest Minecraft news.
+- Quick pickers for the version, performance profile and RAM.
+- Live panels with popular mods and modpacks from Modrinth and Mojang's latest Java news.
+
+The top-right corner shows your Minecraft head and lets you switch accounts. The interface is a local web page
 served on 127.0.0.1 and protected by a one-time token. It opens in an Edge or Chrome app window
 (no tabs or address bar) when one is installed, otherwise in your default browser. Goose exits
 when you press **Quit**, or a few minutes after you close the window if nothing is running.
 Minecraft keeps running if you close Goose. `--no-window` only prints the address.
 
-**Wallpapers:** On the Appearance tab, use "Choose image..." or drag an image onto the window
+**Banner image:** On the Settings page, use "Choose image..." or drag an image onto the window
 (png, jpg, webp, gif or bmp). Images are checked, shrunk to at most 2560x1440 and stored as JPEG in
 the data folder, so you can move or delete the original. A darkening slider keeps text readable.
 
