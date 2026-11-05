@@ -70,7 +70,14 @@ JAVA_HOME or PATH.
 - **Account first:** launching checks your sign-in before downloading anything, so a missing
   account fails immediately.
 
-## Microsoft sign-in setup
+## Microsoft sign-in
+
+Goose ships with its own Azure app, which Mojang has approved for the Minecraft API, so sign-in
+works out of the box. Run `goose account login`, or click **Sign in with Microsoft** on the
+Accounts tab. Then enter the code Goose shows at Microsoft's page. Refresh tokens keep you
+signed in.
+
+To use your own Azure app instead (for a fork, for example):
 
 1. In the Azure portal, register an app with supported account types set to *Personal Microsoft
    accounts only*. Under Authentication, enable **Allow public client flows**. Copy the Application
@@ -78,8 +85,8 @@ JAVA_HOME or PATH.
 2. Request Minecraft API access for that app using Mojang's app registration form
    (https://aka.ms/AppRegistrationForm). Until it is approved, the last step of sign-in fails
    with a 403.
-3. Run `goose account login --client-id <ID>`, or paste the ID on the Accounts tab. Goose remembers
-   the ID, and refresh tokens keep you signed in.
+3. Run `goose account login --client-id <ID>`, set `GOOSE_CLIENT_ID`, or paste the ID under
+   "Advanced" on the Accounts tab. Goose remembers the ID used for each sign-in.
 
 Accounts are stored in `accounts.json` in the data folder (mode 0600 on Unix). Moving tokens into
 the OS keychain is a planned hardening step.

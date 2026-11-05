@@ -603,16 +603,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !readJSON(w, r, &req) {
 		return
 	}
-	id := strings.TrimSpace(req.ClientID)
-	if id == "" {
-		if store, err := core.LoadAccounts(s.dirs); err == nil {
-			id = store.ClientID
-		}
-	}
-	if id == "" {
-		writeErr(w, http.StatusBadRequest, "Enter your Azure application (client) ID first.")
-		return
-	}
+	store, _ := core.LoadAccounts(s.dirs)
+	id := core.ClientIDFor(strings.TrimSpace(req.ClientID), store)
 
 	s.mu.Lock()
 	if s.loggingIn {

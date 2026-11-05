@@ -15,6 +15,23 @@ import (
 	"time"
 )
 
+// DefaultClientID is Goose's own Azure application (client) ID, approved for the
+// Minecraft API. It is a public identifier for a public-client app, not a secret.
+// A different ID can still be given with --client-id, GOOSE_CLIENT_ID or the Accounts tab.
+const DefaultClientID = "7e0d61bc-0b6f-4030-be49-5e9b55ffbeeb"
+
+// ClientIDFor picks the client ID to use: an explicit override, then the one saved
+// with the accounts, then Goose's default.
+func ClientIDFor(override string, store *AccountStore) string {
+	if override != "" {
+		return override
+	}
+	if store != nil && store.ClientID != "" {
+		return store.ClientID
+	}
+	return DefaultClientID
+}
+
 type StoredAccount struct {
 	Username      string `json:"username"`
 	UUID          string `json:"uuid"`
@@ -170,14 +187,8 @@ func AccountForLaunch(ctx context.Context, c *http.Client, dirs Dirs, name, clie
 		return stored.Account(), nil
 	}
 
-	clientID := clientIDOverride
-	if clientID == "" {
-		clientID = store.ClientID
-	}
-	if clientID == "" {
-		return Account{}, errors.New("no Azure client id known; pass --client-id")
-	}
-	tokens, err := RefreshTokens(ctx, c, clientID, stored.RefreshToken)
+	// Refresh tokens are tied to the app that issued them, so prefer the saved ID.
+	tokens, err := RefreshTokens(ctx, c, ClientIDFor(clientIDOverride, store), stored.RefreshToken)
 	if err != nil {
 		return Account{}, err
 	}

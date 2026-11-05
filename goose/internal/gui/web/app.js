@@ -247,8 +247,13 @@ function renderAccounts() {
         onclick: () => run(async () => { await api("/api/accounts/remove", { username: a.username }); await refresh(); }),
       }))));
   }
-  $("client-id").placeholder = data.has_client_id ? "saved from your last sign-in" : "paste your application (client) ID";
 }
+
+$("copy-code").addEventListener("click", () => {
+  navigator.clipboard.writeText($("device-user-code").textContent).then(
+    () => { $("copy-code").textContent = "Copied"; setTimeout(() => { $("copy-code").textContent = "Copy code"; }, 1500); },
+    () => setStatus("Could not copy; select the code and copy it yourself."));
+});
 
 $("login").addEventListener("click", () => run(async () => {
   await api("/api/login", { client_id: $("client-id").value });

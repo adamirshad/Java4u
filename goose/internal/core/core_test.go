@@ -205,6 +205,18 @@ func TestFindRemoveUpsert(t *testing.T) {
 	}
 }
 
+func TestClientIDFor(t *testing.T) {
+	if got := ClientIDFor("", nil); got != DefaultClientID {
+		t.Fatalf("default: %s", got)
+	}
+	if got := ClientIDFor("", &AccountStore{ClientID: "saved"}); got != "saved" {
+		t.Fatalf("saved: %s", got)
+	}
+	if got := ClientIDFor("flag", &AccountStore{ClientID: "saved"}); got != "flag" {
+		t.Fatalf("override: %s", got)
+	}
+}
+
 func TestAccountStoreRoundTrip(t *testing.T) {
 	dirs := NewDirs(t.TempDir())
 	s, err := LoadAccounts(dirs)

@@ -107,16 +107,21 @@
     <h2>Microsoft accounts</h2>
     <ul id="account-list" class="list plain"></ul>
     <hr>
-    <div class="row">
-      <label for="client-id">Azure client ID</label>
-      <input type="text" id="client-id" class="wide">
-    </div>
-    <button id="login">Sign in with Microsoft</button>
+    <button id="login" class="play">Sign in with Microsoft</button>
+    <details class="advanced">
+      <summary>Advanced: use a different Azure app</summary>
+      <div class="row">
+        <label for="client-id">Azure client ID</label>
+        <input type="text" id="client-id" class="wide" placeholder="leave empty to use Goose's app">
+      </div>
+    </details>
     <div id="device-code" class="box hidden">
-      <p>1. Open the Microsoft sign-in page:</p>
-      <p><a id="device-uri" target="_blank" rel="noopener noreferrer"></a></p>
-      <p>2. Enter this code:</p>
-      <p id="device-user-code" class="code"></p>
+      <p>1. Copy this code:</p>
+      <div class="row">
+        <span id="device-user-code" class="code"></span>
+        <button id="copy-code">Copy code</button>
+      </div>
+      <p>2. Open <a id="device-uri" target="_blank" rel="noopener noreferrer"></a> and paste it in.</p>
       <p class="muted">Waiting for you to finish...</p>
     </div>
   </section>

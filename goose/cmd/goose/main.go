@@ -25,7 +25,7 @@ Usage:
   goose instance create <name> <version>      create an instance
   goose instance list                         list instances
   goose instance set <name> [--memory MB | --auto-memory] [--profile off|balanced|performance] [--java PATH]
-  goose account login                         sign in with Microsoft (needs --client-id the first time)
+  goose account login                         sign in with Microsoft
   goose account list                          list saved accounts
   goose account remove <username>             forget a saved account
   goose launch <instance> [--account NAME] [--offline NAME] [--java PATH] [--dry-run]
@@ -33,7 +33,7 @@ Usage:
 
 Global flags (anywhere on the line):
   --data-dir DIR     where Goose stores everything (or set GOOSE_HOME)
-  --client-id ID     Azure application id for Microsoft sign-in (or set GOOSE_CLIENT_ID)
+  --client-id ID     use your own Azure app for Microsoft sign-in (or set GOOSE_CLIENT_ID)
   -v                 show download retries and other warnings
 `
 
@@ -356,17 +356,11 @@ func (a *app) account(args []string) error {
 		if err := need(pos, 0, ""); err != nil {
 			return err
 		}
-		id := a.g.clientID
-		if id == "" {
-			store, err := core.LoadAccounts(a.dirs)
-			if err != nil {
-				return err
-			}
-			id = store.ClientID
+		store, err := core.LoadAccounts(a.dirs)
+		if err != nil {
+			return err
 		}
-		if id == "" {
-			return errors.New("pass your Azure application id with --client-id or GOOSE_CLIENT_ID (see README)")
-		}
+		id := core.ClientIDFor(a.g.clientID, store)
 		acct, err := core.Login(a.ctx, a.client, a.dirs, id, func(dc *core.DeviceCode) {
 			fmt.Printf("To sign in, open %s and enter the code: %s\n", dc.VerificationURI, dc.UserCode)
 			fmt.Println("Waiting for you to finish...")
