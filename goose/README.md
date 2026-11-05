@@ -16,7 +16,7 @@ wallpapers). It needs no C compiler, so it builds for Windows, macOS and Linux f
 Push the repository to GitHub. The `Goose` workflow builds Windows, macOS and Linux executables,
 which you can download from the run's **Artifacts** (Actions tab).
 
-On your own machine, install Go 1.22 or newer from https://go.dev/dl, then run this from this folder:
+On your own machine, install Go 1.25 or newer from https://go.dev/dl, then run this from this folder:
 
     go build ./cmd/goose
     go build -ldflags "-H=windowsgui" ./cmd/goose-gui     # Windows: no console window
