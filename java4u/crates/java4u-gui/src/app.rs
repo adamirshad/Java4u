@@ -252,7 +252,9 @@ impl App {
                 let alpha = (self.settings.wallpaper_dim.clamp(0.0, 0.9) * 255.0) as u8;
                 painter.rect_filled(screen, 0.0, Color32::from_black_alpha(alpha));
             }
-            None => painter.rect_filled(screen, 0.0, Color32::from_rgb(18, 22, 34)),
+            None => {
+                painter.rect_filled(screen, 0.0, Color32::from_rgb(18, 22, 34));
+            }
         }
     }
 
