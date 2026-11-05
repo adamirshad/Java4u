@@ -336,6 +336,11 @@ func isSafeRel(p string) bool {
 		strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\`) {
 		return false
 	}
+	// A drive letter ("C:...") is only absolute on Windows, but never belongs in
+	// these paths on any platform.
+	if len(p) >= 2 && p[1] == ':' {
+		return false
+	}
 	for _, part := range strings.FieldsFunc(p, func(r rune) bool { return r == '/' || r == '\\' }) {
 		if part == ".." {
 			return false
