@@ -159,7 +159,7 @@ func RefreshTokens(ctx context.Context, c *http.Client, clientID, refreshToken s
 		if why == "" {
 			why = r.Error
 		}
-		return MSTokens{}, fmt.Errorf("saved login is no longer valid, run `goose account login` again (%s)", why)
+		return MSTokens{}, fmt.Errorf("saved login is no longer valid, run `java4u account login` again (%s)", why)
 	}
 	return tokensFrom(r)
 }

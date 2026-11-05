@@ -1,6 +1,6 @@
 "use strict";
 
-// Goose desktop UI. All real work happens in the Go process; this page shows state
+// Java4U desktop UI. All real work happens in the Go process; this page shows state
 // and sends requests to it.
 
 const $ = (id) => document.getElementById(id);
@@ -255,9 +255,9 @@ function render() {
   renderAccounts();
   renderSettings();
   renderSlides();
-  $("about-version").textContent = "v" + data.goose_version;
+  $("about-version").textContent = "v" + data.app_version;
   $("about-dir").textContent = data.data_dir;
-  $("footer-version").textContent = "Goose v" + data.goose_version;
+  $("footer-version").textContent = "Java4U v" + data.app_version;
 }
 
 const offline = () => !!data?.settings.play_offline;
@@ -750,10 +750,10 @@ window.addEventListener("drop", (e) => {
 // ------------------------------------------------------------ quit and polling
 
 $("quit").addEventListener("click", () => {
-  if (lastState.running && !confirm("Minecraft keeps running after Goose closes. Close Goose?")) return;
-  if (lastState.busy && !lastState.running && !confirm("A download is still in progress. Close Goose anyway?")) return;
+  if (lastState.running && !confirm("Minecraft keeps running after Java4U closes. Close Java4U?")) return;
+  if (lastState.busy && !lastState.running && !confirm("A download is still in progress. Close Java4U anyway?")) return;
   api("/api/quit", {}).finally(() => {
-    document.body.replaceChildren(el("p", { class: "card", textContent: "Goose has closed. You can close this window." }));
+    document.body.replaceChildren(el("p", { class: "card", textContent: "Java4U has closed. You can close this window." }));
     window.close();
   });
 });
@@ -801,7 +801,7 @@ async function poll() {
     if (st.busy || st.logging_in) next = 400;
     if (data && data.versions.length === 0 && !data.versions_error) await refresh();
   } catch (e) {
-    setStatus("Lost connection to Goose. Is it still running?", "err");
+    setStatus("Lost connection to Java4U. Is it still running?", "err");
     next = 3000;
   }
   pollTimer = setTimeout(poll, next);

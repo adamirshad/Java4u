@@ -15,13 +15,13 @@ import (
 	"time"
 )
 
-// DefaultClientID is Goose's own Azure application (client) ID, approved for the
+// DefaultClientID is Java4U's own Azure application (client) ID, approved for the
 // Minecraft API. It is a public identifier for a public-client app, not a secret.
-// A different ID can still be given with --client-id, GOOSE_CLIENT_ID or the Accounts tab.
+// A different ID can still be given with --client-id, JAVA4U_CLIENT_ID or the Accounts tab.
 const DefaultClientID = "7e0d61bc-0b6f-4030-be49-5e9b55ffbeeb"
 
 // ClientIDFor picks the client ID to use: an explicit override, then the one saved
-// with the accounts, then Goose's default.
+// with the accounts, then Java4U's default.
 func ClientIDFor(override string, store *AccountStore) string {
 	if override != "" {
 		return override
@@ -177,9 +177,9 @@ func AccountForLaunch(ctx context.Context, c *http.Client, dirs Dirs, name, clie
 	found := store.Find(name)
 	if found == nil {
 		if name != "" {
-			return Account{}, fmt.Errorf("no saved account named '%s'; run `goose account login`", name)
+			return Account{}, fmt.Errorf("no saved account named '%s'; run `java4u account login`", name)
 		}
-		return Account{}, errors.New("no saved accounts; run `goose account login` (or use --offline NAME for testing)")
+		return Account{}, errors.New("no saved accounts; run `java4u account login` (or use --offline NAME for testing)")
 	}
 	stored := *found
 

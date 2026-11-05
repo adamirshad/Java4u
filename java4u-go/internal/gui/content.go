@@ -1,7 +1,7 @@
 package gui
 
 // Live content for the home page: Mojang news, Modrinth mods and modpacks, and
-// player avatars. Everything is fetched by Goose (not the page) and cached briefly.
+// player avatars. Everything is fetched by Java4U (not the page) and cached briefly.
 
 import (
 	"bytes"

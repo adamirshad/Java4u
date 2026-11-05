@@ -8,7 +8,7 @@ import (
 	"runtime"
 )
 
-// Version is Goose's own version, sent as the user agent and to the game as launcher_version.
+// Version is Java4U's own version, sent as the user agent and to the game as launcher_version.
 const Version = "0.1.0"
 
 // Dirs holds all on-disk locations used by the launcher.
@@ -18,10 +18,10 @@ type Dirs struct {
 
 func NewDirs(root string) Dirs { return Dirs{Root: root} }
 
-// DefaultDirs returns $GOOSE_HOME if set, otherwise the platform data directory:
-// %APPDATA%\Goose, ~/Library/Application Support/Goose or ~/.local/share/goose.
+// DefaultDirs returns $JAVA4U_HOME if set, otherwise the platform data directory:
+// %APPDATA%\Java4U, ~/Library/Application Support/Java4U or ~/.local/share/java4u.
 func DefaultDirs() (Dirs, error) {
-	if h := os.Getenv("GOOSE_HOME"); h != "" {
+	if h := os.Getenv("JAVA4U_HOME"); h != "" {
 		return NewDirs(h), nil
 	}
 	switch runtime.GOOS {
@@ -30,16 +30,16 @@ func DefaultDirs() (Dirs, error) {
 		if err != nil {
 			return Dirs{}, errors.New("could not determine a data directory")
 		}
-		return NewDirs(filepath.Join(base, "Goose")), nil
+		return NewDirs(filepath.Join(base, "Java4U")), nil
 	default:
 		if x := os.Getenv("XDG_DATA_HOME"); x != "" {
-			return NewDirs(filepath.Join(x, "goose")), nil
+			return NewDirs(filepath.Join(x, "java4u")), nil
 		}
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return Dirs{}, errors.New("could not determine a data directory")
 		}
-		return NewDirs(filepath.Join(home, ".local", "share", "goose")), nil
+		return NewDirs(filepath.Join(home, ".local", "share", "java4u")), nil
 	}
 }
 

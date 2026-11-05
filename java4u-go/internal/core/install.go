@@ -12,7 +12,7 @@ import (
 
 const (
 	resourcesBase = "https://resources.download.minecraft.net"
-	okMarker      = ".goose-ok"
+	okMarker      = ".java4u-ok"
 )
 
 // InstallVersion installs (or quickly re-checks) a concrete version id such as "1.21.1".

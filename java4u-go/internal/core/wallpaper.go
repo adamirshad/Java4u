@@ -1,7 +1,7 @@
 package core
 
 // User-chosen background images. Imported images are validated, shrunk to at most
-// 2560x1440 and stored as JPEG in Goose's own folder, so they load fast and never
+// 2560x1440 and stored as JPEG in Java4U's own folder, so they load fast and never
 // depend on the original file staying where it was.
 
 import (

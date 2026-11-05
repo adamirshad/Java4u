@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/adamirshad/Java4u/goose/internal/core"
+	"github.com/adamirshad/Java4u/java4u-go/internal/core"
 )
 
 func start(t *testing.T) (*Server, string, *http.Client) {

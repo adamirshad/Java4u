@@ -1,4 +1,4 @@
-// Command goose is the command-line front-end of the Goose Minecraft launcher.
+// Command java4u is the command-line front-end of the Java4U Minecraft launcher.
 package main
 
 import (
@@ -14,26 +14,26 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/adamirshad/Java4u/goose/internal/core"
+	"github.com/adamirshad/Java4u/java4u-go/internal/core"
 )
 
-const usage = `goose - a Minecraft launcher written in Go
+const usage = `java4u - a Minecraft launcher written in Go
 
 Usage:
-  goose list [--snapshots | --all]            list Minecraft versions
-  goose install <version> [--verify]          download client, libraries, assets ("latest" works)
-  goose instance create <name> <version>      create an instance
-  goose instance list                         list instances
-  goose instance set <name> [--memory MB | --auto-memory] [--profile off|balanced|performance] [--java PATH]
-  goose account login                         sign in with Microsoft
-  goose account list                          list saved accounts
-  goose account remove <username>             forget a saved account
-  goose launch <instance> [--account NAME] [--offline NAME] [--java PATH] [--dry-run]
-  goose version                               print the Goose version
+  java4u list [--snapshots | --all]            list Minecraft versions
+  java4u install <version> [--verify]          download client, libraries, assets ("latest" works)
+  java4u instance create <name> <version>      create an instance
+  java4u instance list                         list instances
+  java4u instance set <name> [--memory MB | --auto-memory] [--profile off|balanced|performance] [--java PATH]
+  java4u account login                         sign in with Microsoft
+  java4u account list                          list saved accounts
+  java4u account remove <username>             forget a saved account
+  java4u launch <instance> [--account NAME] [--offline NAME] [--java PATH] [--dry-run]
+  java4u version                               print the Java4U version
 
 Global flags (anywhere on the line):
-  --data-dir DIR     where Goose stores everything (or set GOOSE_HOME)
-  --client-id ID     use your own Azure app for Microsoft sign-in (or set GOOSE_CLIENT_ID)
+  --data-dir DIR     where Java4U stores everything (or set JAVA4U_HOME)
+  --client-id ID     use your own Azure app for Microsoft sign-in (or set JAVA4U_CLIENT_ID)
   -v                 show download retries and other warnings
 `
 
@@ -71,7 +71,7 @@ func parse(fs *flag.FlagSet, args []string) ([]string, error) {
 
 func need(pos []string, n int, what string) error {
 	if len(pos) < n {
-		return fmt.Errorf("missing %s (see `goose help`)", what)
+		return fmt.Errorf("missing %s (see `java4u help`)", what)
 	}
 	if len(pos) > n {
 		return fmt.Errorf("unexpected argument %q", pos[n])
@@ -127,8 +127,8 @@ func main() {
 }
 
 func run(ctx context.Context, args []string) error {
-	g := globals{dataDir: os.Getenv("GOOSE_HOME"), clientID: os.Getenv("GOOSE_CLIENT_ID")}
-	top := newFlags("goose", &g)
+	g := globals{dataDir: os.Getenv("JAVA4U_HOME"), clientID: os.Getenv("JAVA4U_CLIENT_ID")}
+	top := newFlags("java4u", &g)
 	if err := top.Parse(args); err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func run(ctx context.Context, args []string) error {
 	a := &app{ctx: ctx, g: g, client: core.NewClient()}
 	switch cmd {
 	case "version":
-		fmt.Println("goose", core.Version)
+		fmt.Println("java4u", core.Version)
 		return nil
 	case "list":
 		return a.list(rest)
@@ -155,7 +155,7 @@ func run(ctx context.Context, args []string) error {
 	case "launch":
 		return a.launch(rest)
 	}
-	return fmt.Errorf("unknown command %q (see `goose help`)", cmd)
+	return fmt.Errorf("unknown command %q (see `java4u help`)", cmd)
 }
 
 // setup applies the global flags once the subcommand's flags have been parsed.
@@ -281,7 +281,7 @@ func (a *app) instance(args []string) error {
 			return err
 		}
 		if len(all) == 0 {
-			fmt.Println("no instances yet; try: goose instance create main latest")
+			fmt.Println("no instances yet; try: java4u instance create main latest")
 		}
 		for _, i := range all {
 			fmt.Printf("%-24s %-10s %d MB, %s profile\n", i.Name, i.Version, i.MemoryMB, i.Profile)
@@ -380,7 +380,7 @@ func (a *app) account(args []string) error {
 			return err
 		}
 		if len(store.Accounts) == 0 {
-			fmt.Println("no accounts; run: goose account login")
+			fmt.Println("no accounts; run: java4u account login")
 		}
 		for _, acc := range store.Accounts {
 			fmt.Printf("%-18s %s\n", acc.Username, acc.UUID)

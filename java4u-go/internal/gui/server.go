@@ -1,4 +1,4 @@
-// Package gui serves Goose's desktop interface: a small web app bound to 127.0.0.1,
+// Package gui serves Java4U's desktop interface: a small web app bound to 127.0.0.1,
 // shown in an app window (or a browser tab). All game work happens in Go.
 package gui
 
@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/adamirshad/Java4u/goose/internal/core"
+	"github.com/adamirshad/Java4u/java4u-go/internal/core"
 )
 
 //go:embed web
@@ -30,8 +30,8 @@ var webFS embed.FS
 
 const (
 	maxLogLines = 3000
-	cookieName  = "goose_session"
-	// idleExit closes Goose once the window has been gone this long and nothing is running.
+	cookieName  = "java4u_session"
+	// idleExit closes Java4U once the window has been gone this long and nothing is running.
 	// Hidden browser tabs may only poll about once a minute, so this stays generous.
 	idleExit = 3 * time.Minute
 )
@@ -232,7 +232,7 @@ func (s *Server) validCookie(r *http.Request) bool {
 func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !s.validCookie(r) {
-			writeErr(w, http.StatusUnauthorized, "not signed in to this Goose window")
+			writeErr(w, http.StatusUnauthorized, "not signed in to this Java4U window")
 			return
 		}
 		if r.Method == http.MethodPost {
@@ -251,7 +251,7 @@ func (s *Server) auth(h http.HandlerFunc) http.HandlerFunc {
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	if t := r.URL.Query().Get("t"); t != "" {
 		if subtle.ConstantTimeCompare([]byte(t), []byte(s.token)) != 1 {
-			http.Error(w, "This link has expired. Start Goose again.", http.StatusForbidden)
+			http.Error(w, "This link has expired. Start Java4U again.", http.StatusForbidden)
 			return
 		}
 		http.SetCookie(w, &http.Cookie{
@@ -262,7 +262,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.validCookie(r) {
-		http.Error(w, "This window is not connected to Goose. Start Goose again.", http.StatusForbidden)
+		http.Error(w, "This window is not connected to Java4U. Start Java4U again.", http.StatusForbidden)
 		return
 	}
 	page, _ := webFS.ReadFile("web/index.html")
@@ -367,7 +367,7 @@ func (s *Server) handleData(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 
 	writeJSON(w, map[string]any{
-		"goose_version":  core.Version,
+		"app_version":    core.Version,
 		"data_dir":       s.dirs.Root,
 		"instances":      instances,
 		"accounts":       accounts,
@@ -562,7 +562,7 @@ func (s *Server) play(inst *core.Instance, offline, account string) error {
 }
 
 // runLogged runs the game, streaming its output into the log until it exits.
-// The game keeps running even if Goose's window is closed.
+// The game keeps running even if Java4U's window is closed.
 func (s *Server) runLogged(cmd *exec.Cmd) error {
 	core.HideConsole(cmd)
 	stdout, err := cmd.StdoutPipe()

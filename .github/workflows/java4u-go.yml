@@ -1,4 +1,4 @@
-name: Goose
+name: Java4U
 
 on:
   push:
@@ -16,13 +16,13 @@ jobs:
         os: [ ubuntu-latest, windows-latest, macos-latest ]
     defaults:
       run:
-        working-directory: goose
+        working-directory: java4u-go
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
-          go-version-file: goose/go.mod
-          cache-dependency-path: goose/go.sum
+          go-version-file: java4u-go/go.mod
+          cache-dependency-path: java4u-go/go.sum
       - run: go vet ./...
       - run: go test ./...
 
@@ -31,27 +31,27 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: goose
+        working-directory: java4u-go
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
-          go-version-file: goose/go.mod
-          cache-dependency-path: goose/go.sum
+          go-version-file: java4u-go/go.mod
+          cache-dependency-path: java4u-go/go.sum
       - name: Cross-compile
         run: |
           set -e
           for target in windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
             os=${target%/*}; arch=${target#*/}
-            out=dist/goose-$os-$arch
+            out=dist/java4u-$os-$arch
             ext=""; guiflags="-s -w"
             if [ "$os" = windows ]; then ext=".exe"; guiflags="-s -w -H=windowsgui"; fi
             mkdir -p "$out"
-            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "-s -w" -o "$out/goose$ext" ./cmd/goose
-            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "$guiflags" -o "$out/goose-gui$ext" ./cmd/goose-gui
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "-s -w" -o "$out/java4u$ext" ./cmd/java4u
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "$guiflags" -o "$out/java4u-gui$ext" ./cmd/java4u-gui
             cp README.md "$out/"
           done
       - uses: actions/upload-artifact@v4
         with:
-          name: goose-binaries
-          path: goose/dist/
+          name: java4u-binaries
+          path: java4u-go/dist/

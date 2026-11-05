@@ -117,7 +117,7 @@ func BuildCommand(dirs Dirs, v *VersionJSON, opts LaunchOptions) (*exec.Cmd, err
 		"library_directory":   dirs.LibrariesDir(),
 		"classpath_separator": sep,
 		"classpath":           classpath,
-		"launcher_name":       "goose",
+		"launcher_name":       "java4u",
 		"launcher_version":    Version,
 	}
 	pairs := make([]string, 0, len(vars)*2)

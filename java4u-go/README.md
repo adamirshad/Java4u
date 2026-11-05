@@ -1,31 +1,32 @@
-# Goose
+# Java4U
 
-Goose is an unofficial, open-source Minecraft: Java Edition launcher written in Go. It is the Go
-rewrite of Java4u. It is not affiliated with Mojang or Microsoft.
+Java4U is an unofficial, open-source Minecraft: Java Edition launcher written in Go, with a goose
+for a mascot. It replaces the earlier Rust version in `../java4u`. It is not affiliated with
+Mojang or Microsoft.
 
 - `internal/core`: versions, parallel hash-verified downloads, libraries/natives, assets, Java
   runtimes, Microsoft sign-in, instances, launch command builder.
-- `cmd/goose`: `goose` command-line tool.
-- `cmd/goose-gui`: `goose-gui` desktop app with custom wallpapers.
+- `cmd/java4u`: `java4u` command-line tool.
+- `cmd/java4u-gui`: `java4u-gui` desktop app.
 
-Goose's only dependency outside Go's standard library is `golang.org/x/image` (for webp and bmp
+Java4U's only dependency outside Go's standard library is `golang.org/x/image` (for webp and bmp
 wallpapers). It needs no C compiler, so it builds for Windows, macOS and Linux from any machine.
 
 ## Get an executable
 
-Push the repository to GitHub. The `Goose` workflow builds Windows, macOS and Linux executables,
+Push the repository to GitHub. The `Java4U` workflow builds Windows, macOS and Linux executables,
 which you can download from the run's **Artifacts** (Actions tab).
 
 On your own machine, install Go 1.25 or newer from https://go.dev/dl, then run this from this folder:
 
-    go build ./cmd/goose
-    go build -ldflags "-H=windowsgui" ./cmd/goose-gui     # Windows: no console window
-    go build ./cmd/goose-gui                              # macOS / Linux
+    go build ./cmd/java4u
+    go build -ldflags "-H=windowsgui" ./cmd/java4u-gui     # Windows: no console window
+    go build ./cmd/java4u-gui                              # macOS / Linux
     go test ./...
 
 ## Desktop app
 
-    go run ./cmd/goose-gui
+    go run ./cmd/java4u-gui
 
 The sidebar has Home, Versions, Mods, Modpacks, Account, Settings and About. The Home page has:
 - A banner with a big **Launch Game** button. The banner shows a pixel-art scene or your own
@@ -35,9 +36,9 @@ The sidebar has Home, Versions, Mods, Modpacks, Account, Settings and About. The
 
 The top-right corner shows your Minecraft head and lets you switch accounts. The interface is a local web page
 served on 127.0.0.1 and protected by a one-time token. It opens in an Edge or Chrome app window
-(no tabs or address bar) when one is installed, otherwise in your default browser. Goose exits
+(no tabs or address bar) when one is installed, otherwise in your default browser. Java4U exits
 when you press **Quit**, or a few minutes after you close the window if nothing is running.
-Minecraft keeps running if you close Goose. `--no-window` only prints the address.
+Minecraft keeps running if you close Java4U. `--no-window` only prints the address.
 
 **Banner image:** On the Settings page, use "Choose image..." or drag an image onto the window
 (png, jpg, webp, gif or bmp). Images are checked, shrunk to at most 2560x1440 and stored as JPEG in
@@ -45,24 +46,24 @@ the data folder, so you can move or delete the original. A darkening slider keep
 
 ## Use
 
-    goose list                          # releases (add --snapshots / --all)
-    goose install latest                # download client, libraries, assets
-    goose instance create main 1.21.1
-    goose account login                 # Microsoft sign-in (needs --client-id the first time)
-    goose launch main                   # plays as your saved account
-    goose launch main --offline Steve   # offline, dev/testing only
-    goose launch main --dry-run         # print the java command (access token hidden)
-    goose instance set main --auto-memory --profile performance
-    goose install 1.21.1 --verify       # re-check every file's SHA1 (repair)
+    java4u list                          # releases (add --snapshots / --all)
+    java4u install latest                # download client, libraries, assets
+    java4u instance create main 1.21.1
+    java4u account login                 # Microsoft sign-in (needs --client-id the first time)
+    java4u launch main                   # plays as your saved account
+    java4u launch main --offline Steve   # offline, dev/testing only
+    java4u launch main --dry-run         # print the java command (access token hidden)
+    java4u instance set main --auto-memory --profile performance
+    java4u install 1.21.1 --verify       # re-check every file's SHA1 (repair)
 
-Data lives in `%APPDATA%\Goose`, `~/Library/Application Support/Goose` or `~/.local/share/goose`.
-Override it with `--data-dir` or `GOOSE_HOME`. Goose uses the same file formats as the Rust
+Data lives in `%APPDATA%\Java4U`, `~/Library/Application Support/Java4U` or `~/.local/share/java4u`.
+Override it with `--data-dir` or `JAVA4U_HOME`. Java4U uses the same file formats as the Rust
 java4u launcher, so you can copy a java4u data folder (instances, accounts, settings) into
-Goose's folder.
+Java4U's folder.
 
-Java is handled for you. On first launch Goose downloads the exact runtime Mojang ships for that
+Java is handled for you. On first launch Java4U downloads the exact runtime Mojang ships for that
 Minecraft version into `runtimes/`; delete a folder there to force an update. If Mojang publishes
-no runtime for your platform (for example Linux ARM), Goose uses a suitable system Java from
+no runtime for your platform (for example Linux ARM), Java4U uses a suitable system Java from
 JAVA_HOME or PATH.
 
 ## Optimisation
@@ -78,9 +79,9 @@ JAVA_HOME or PATH.
 
 ## Microsoft sign-in
 
-Goose ships with its own Azure app, which Mojang has approved for the Minecraft API, so sign-in
-works out of the box. Run `goose account login`, or click **Sign in with Microsoft** on the
-Accounts tab. Then enter the code Goose shows at Microsoft's page. Refresh tokens keep you
+Java4U ships with its own Azure app, which Mojang has approved for the Minecraft API, so sign-in
+works out of the box. Run `java4u account login`, or click **Sign in with Microsoft** on the
+Accounts tab. Then enter the code Java4U shows at Microsoft's page. Refresh tokens keep you
 signed in.
 
 To use your own Azure app instead (for a fork, for example):
@@ -91,8 +92,8 @@ To use your own Azure app instead (for a fork, for example):
 2. Request Minecraft API access for that app using Mojang's app registration form
    (https://aka.ms/AppRegistrationForm). Until it is approved, the last step of sign-in fails
    with a 403.
-3. Run `goose account login --client-id <ID>`, set `GOOSE_CLIENT_ID`, or paste the ID under
-   "Advanced" on the Accounts tab. Goose remembers the ID used for each sign-in.
+3. Run `java4u account login --client-id <ID>`, set `JAVA4U_CLIENT_ID`, or paste the ID under
+   "Advanced" on the Accounts tab. Java4U remembers the ID used for each sign-in.
 
 Accounts are stored in `accounts.json` in the data folder (mode 0600 on Unix). Moving tokens into
 the OS keychain is a planned hardening step.

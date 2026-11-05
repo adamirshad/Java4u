@@ -1,4 +1,4 @@
-// Command goose-gui is the Goose desktop app. It starts the launcher on 127.0.0.1 and
+// Command java4u-gui is the Java4U desktop app. It starts the launcher on 127.0.0.1 and
 // opens it in a browser app window (Edge or Chrome when available, otherwise the
 // default browser). It exits when you press Quit or close the window.
 package main
@@ -12,14 +12,14 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/adamirshad/Java4u/goose/internal/core"
-	"github.com/adamirshad/Java4u/goose/internal/gui"
+	"github.com/adamirshad/Java4u/java4u-go/internal/core"
+	"github.com/adamirshad/Java4u/java4u-go/internal/gui"
 )
 
 func main() {
 	noWindow := flag.Bool("no-window", false, "don't open a window; just print the address")
 	addr := flag.String("addr", "127.0.0.1:0", "address to listen on (keep it on 127.0.0.1)")
-	dataDir := flag.String("data-dir", "", "where Goose stores everything (default: GOOSE_HOME or the platform data folder)")
+	dataDir := flag.String("data-dir", "", "where Java4U stores everything (default: JAVA4U_HOME or the platform data folder)")
 	flag.Parse()
 
 	dirs, err := core.DefaultDirs()
@@ -33,7 +33,7 @@ func main() {
 		fatal(err)
 	}
 	// The windowed build has no console, so keep a log file next to the data.
-	if f, err := os.OpenFile(filepath.Join(dirs.Root, "goose.log"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); err == nil {
+	if f, err := os.OpenFile(filepath.Join(dirs.Root, "java4u.log"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); err == nil {
 		log.SetOutput(f)
 		defer f.Close()
 	}
@@ -42,8 +42,8 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-	log.Printf("Goose %s running; data in %s", core.Version, dirs.Root)
-	fmt.Println("Goose is running at", url)
+	log.Printf("Java4U %s running; data in %s", core.Version, dirs.Root)
+	fmt.Println("Java4U is running at", url)
 	if !*noWindow {
 		if err := openWindow(url); err != nil {
 			log.Printf("could not open a window: %v", err)

@@ -65,12 +65,12 @@ type uaTransport struct{ base http.RoundTripper }
 func (t uaTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	if r.Header.Get("User-Agent") == "" {
 		r = r.Clone(r.Context())
-		r.Header.Set("User-Agent", "goose/"+Version)
+		r.Header.Set("User-Agent", "java4u/"+Version)
 	}
 	return t.base.RoundTrip(r)
 }
 
-// NewClient returns the HTTP client used for all of Goose's network work.
+// NewClient returns the HTTP client used for all of Java4U's network work.
 func NewClient() *http.Client {
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.DialContext = (&net.Dialer{Timeout: 15 * time.Second, KeepAlive: 30 * time.Second}).DialContext
