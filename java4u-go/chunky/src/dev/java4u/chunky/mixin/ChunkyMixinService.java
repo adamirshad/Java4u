@@ -40,9 +40,13 @@ public final class ChunkyMixinService extends MixinServiceAbstract
 		return transformer;
 	}
 
+	/**
+	 * Mods compare this name to pick their Fabric code path (Controlify, for one, accepts
+	 * only Fabric's "Knot/Fabric"), so Chunky answers with that name for compatibility.
+	 */
 	@Override
 	public String getName() {
-		return "Chunky";
+		return "Knot/Fabric";
 	}
 
 	@Override
@@ -84,6 +88,11 @@ public final class ChunkyMixinService extends MixinServiceAbstract
 	}
 
 	@Override
+	protected org.spongepowered.asm.logging.ILogger createLogger(String name) {
+		return new ChunkyMixinLogger(name);
+	}
+
+	@Override
 	public IAdviceProvider getAdviceProvider() {
 		return null;
 	}
@@ -115,7 +124,7 @@ public final class ChunkyMixinService extends MixinServiceAbstract
 
 	@Override
 	public MixinEnvironment.CompatibilityLevel getMaxCompatibilityLevel() {
-		return MixinEnvironment.CompatibilityLevel.MAX_SUPPORTED;
+		return MixinEnvironment.CompatibilityLevel.JAVA_25;
 	}
 
 	// ---------------------------------------------------------------- IClassProvider

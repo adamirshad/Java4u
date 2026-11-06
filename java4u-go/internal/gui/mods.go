@@ -73,7 +73,7 @@ func (s *Server) handleInstallMod(w http.ResponseWriter, r *http.Request) {
 	s.setStatus("Installing " + req.Project + "...")
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Minute)
 	defer cancel()
-	files, err := core.InstallMod(ctx, s.client, inst.ModsDir(s.dirs), req.Project, inst.Version)
+	files, err := core.InstallMod(ctx, s.client, inst.ModsDir(s.dirs), req.Project, inst.Version, core.SideClient)
 	if err != nil {
 		s.setStatus("Could not install: " + err.Error())
 		writeErr(w, http.StatusBadGateway, err.Error())

@@ -30,6 +30,12 @@ Usage:
   java4u mods list <instance>                  list an instance's mods
   java4u mods install <instance> <project>     install a mod from Modrinth (slug or id) and what it needs
   java4u mods enable|disable|remove <instance> <file.jar>
+  java4u modpack install <project> [--name N]  install a Modrinth modpack as a new Chunky instance
+  java4u server create <name> <version>        create a dedicated server ("latest" works)
+  java4u server list                           list servers
+  java4u server set <name> [--memory MB] [--loader chunky|vanilla]
+  java4u server mods list|install|enable|disable|remove <name> [project or file.jar]
+  java4u server run <name> [--accept-eula]     run it in this terminal (type "stop" to quit)
   java4u account login                         sign in with Microsoft
   java4u account list                          list saved accounts
   java4u account remove <username>             forget a saved account
@@ -159,6 +165,10 @@ func run(ctx context.Context, args []string) error {
 		return a.account(rest)
 	case "mods":
 		return a.mods(rest)
+	case "server":
+		return a.server(rest)
+	case "modpack":
+		return a.modpack(rest)
 	case "launch":
 		return a.launch(rest)
 	}
@@ -488,7 +498,7 @@ func (a *app) mods(args []string) error {
 			}
 			fmt.Printf("switched %s to Chunky so it can run mods\n", inst.Name)
 		}
-		files, err := core.InstallMod(a.ctx, a.client, dir, pos[1], inst.Version)
+		files, err := core.InstallMod(a.ctx, a.client, dir, pos[1], inst.Version, core.SideClient)
 		for _, f := range files {
 			fmt.Printf("installed %s %s (%s)\n", f.File, f.Version, f.Reason)
 		}

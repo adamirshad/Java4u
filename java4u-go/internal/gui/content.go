@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/adamirshad/Java4u/java4u-go/internal/core"
 )
 
 const (
@@ -193,8 +195,21 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	facets := [][]string{{"project_type:" + kind}}
-	if kind == "mod" {
-		facets = append(facets, []string{"categories:fabric"}) // Chunky runs Fabric mods
+	// Chunky runs Fabric mods and packs.
+	facets = append(facets, []string{"categories:fabric"})
+	if kind == "modpack" && gameVersion == "" {
+		// Only packs that have a build for a version Chunky can run.
+		var supported []string
+		s.mu.Lock()
+		for _, v := range s.versions {
+			if v.Kind == "release" && core.ChunkySupports(v.ID) {
+				supported = append(supported, "versions:"+v.ID)
+			}
+		}
+		s.mu.Unlock()
+		if len(supported) > 0 {
+			facets = append(facets, supported)
+		}
 	}
 	if gameVersion != "" {
 		facets = append(facets, []string{"versions:" + gameVersion})

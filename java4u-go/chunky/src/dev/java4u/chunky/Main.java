@@ -47,6 +47,9 @@ public final class Main {
 	/** The Fabric Loader API level Chunky answers to when mods depend on "fabricloader". */
 	public static final String FABRIC_API_LEVEL = "0.20.1";
 
+	/** "server" for a dedicated server (set with -Dchunky.side=server), otherwise the client. */
+	private static final EnvType env = "server".equals(System.getProperty("chunky.side")) ? EnvType.SERVER : EnvType.CLIENT;
+
 	private Main() {
 	}
 
@@ -72,12 +75,14 @@ public final class Main {
 		Path gameJar = Path.of(required("chunky.gameJar"));
 		List<Path> gameClasspath = readClasspath(Path.of(required("chunky.classpathFile")));
 		long t0 = System.nanoTime();
-		Log.info("Chunky " + VERSION + " starting Minecraft " + gameVersion + " on Java " + Runtime.version());
+		Log.info("Chunky " + VERSION + " starting Minecraft " + gameVersion + (env == EnvType.SERVER ? " (dedicated server)" : "")
+				+ " on Java " + Runtime.version());
+		dev.java4u.chunky.loader.GameHooks.setServer(env == EnvType.SERVER);
 
 		// 1. Find and choose mods.
 		List<ChunkyMod> builtins = builtins(gameJar, gameVersion);
 		List<ChunkyMod> found = Discovery.scan(gameDir.resolve("mods"), gameDir.resolve(".chunky").resolve("nested"));
-		List<ChunkyMod> mods = Resolver.resolve(builtins, found, EnvType.CLIENT);
+		List<ChunkyMod> mods = Resolver.resolve(builtins, found, env);
 		List<String> names = new ArrayList<>();
 		for (ChunkyMod m : mods) if (!m.meta.getType().equals("builtin") && !m.meta.getType().equals("library")) names.add(m.meta.toString());
 		Log.info("Loading " + names.size() + " mod" + (names.size() == 1 ? "" : "s") + (names.isEmpty() ? "" : ": " + String.join(", ", names)));
@@ -89,7 +94,7 @@ public final class Main {
 		}
 		ChunkyClassLoader cl = new ChunkyClassLoader(classpath, Main.class.getClassLoader());
 		Thread.currentThread().setContextClassLoader(cl);
-		ChunkyLoader.init(mods, gameDir, gameVersion, args, cl);
+		ChunkyLoader.init(mods, gameDir, gameVersion, args, cl, env);
 
 		// 3. Access wideners and Mixin.
 		AccessWidener widener = readWideners(mods);
@@ -148,13 +153,13 @@ public final class Main {
 		} catch (Throwable t) {
 			Log.warn("MixinExtras couldn't start; mods that use it may fail: " + t);
 		}
-		MixinEnvironment.getDefaultEnvironment().setSide(MixinEnvironment.Side.CLIENT);
+		MixinEnvironment.getDefaultEnvironment().setSide(env == EnvType.SERVER ? MixinEnvironment.Side.SERVER : MixinEnvironment.Side.CLIENT);
 
 		Map<String, ChunkyMod> owners = new HashMap<>();
 		int count = 0;
 		for (ChunkyMod m : mods) {
 			for (ModMeta.MixinConfig c : m.meta.mixins) {
-				if (!c.environment.matches(EnvType.CLIENT)) continue;
+				if (!c.environment.matches(env)) continue;
 				owners.put(c.config, m);
 				Mixins.addConfiguration(c.config);
 				count++;

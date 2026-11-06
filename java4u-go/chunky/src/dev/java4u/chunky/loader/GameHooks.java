@@ -17,22 +17,32 @@ import dev.java4u.chunky.Log;
  * Inserts the call that starts mods into the game's own code. Because 26.x and newer ship
  * with real class names, Chunky can find the right spot by name instead of guessing.
  *
- * Client: in {@code net.minecraft.client.Minecraft}'s constructor, right after the game
- * stores itself in its static instance field (and its game directory, when that comes
- * next). At that point Minecraft.getInstance() works but no resources are loaded yet.
+ * Client: in {@code net.minecraft.client.Minecraft}'s constructor, after the game has
+ * stored itself and its player. At that point Minecraft.getInstance() works but no
+ * resources are loaded yet.
+ *
+ * Dedicated server: in {@code net.minecraft.server.Main.main}, right after
+ * {@code Bootstrap.bootStrap()} has set up the registries and before the world loads.
  */
-final class GameHooks {
+public final class GameHooks {
 	static final String CLIENT = "net.minecraft.client.Minecraft";
+	static final String SERVER = "net.minecraft.server.Main";
 	private static final String CLIENT_INTERNAL = "net/minecraft/client/Minecraft";
 	private static final String HOOKS = "dev/java4u/chunky/ChunkyHooks";
 	/** Mixin reads the class too, so patch() runs twice; log once. */
 	private static volatile boolean logged;
+	private static volatile boolean server;
 
 	private GameHooks() {
 	}
 
+	/** Chooses which side's entry point gets the hook. */
+	public static void setServer(boolean isServer) {
+		server = isServer;
+	}
+
 	static boolean targets(String name) {
-		return name.equals(CLIENT);
+		return name.equals(server ? SERVER : CLIENT);
 	}
 
 	static byte[] patch(String name, byte[] bytes) {
@@ -40,12 +50,20 @@ final class GameHooks {
 		new ClassReader(bytes).accept(node, 0);
 		boolean done = false;
 		for (MethodNode m : node.methods) {
-			if (!m.name.equals("<init>")) continue;
-			AbstractInsnNode at = findClientHookPoint(m, node.superName);
-			if (at == null) continue;
 			InsnList call = new InsnList();
-			call.add(new VarInsnNode(Opcodes.ALOAD, 0));
-			call.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HOOKS, "startClient", "(Ljava/lang/Object;)V", false));
+			AbstractInsnNode at;
+			if (server) {
+				if (!m.name.equals("main") || !m.desc.equals("([Ljava/lang/String;)V")) continue;
+				at = findServerHookPoint(m);
+				call.add(new org.objectweb.asm.tree.InsnNode(Opcodes.ACONST_NULL));
+				call.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HOOKS, "startServer", "(Ljava/lang/Object;)V", false));
+			} else {
+				if (!m.name.equals("<init>")) continue;
+				at = findClientHookPoint(m, node.superName);
+				call.add(new VarInsnNode(Opcodes.ALOAD, 0));
+				call.add(new MethodInsnNode(Opcodes.INVOKESTATIC, HOOKS, "startClient", "(Ljava/lang/Object;)V", false));
+			}
+			if (at == null) continue;
 			m.instructions.insert(at, call);
 			m.maxStack = Math.max(m.maxStack, 1);
 			done = true;
@@ -90,6 +108,18 @@ final class GameHooks {
 		if (user != null) return dir != null && isAfter(dir, user) ? dir : user;
 		if (dir != null) return dir;
 		return instance != null ? instance : superCall;
+	}
+
+	/** Just after the call to Bootstrap.bootStrap() in the server's main method. */
+	private static AbstractInsnNode findServerHookPoint(MethodNode main) {
+		for (AbstractInsnNode n = main.instructions.getFirst(); n != null; n = n.getNext()) {
+			if (n.getOpcode() != Opcodes.INVOKESTATIC) continue;
+			MethodInsnNode mi = (MethodInsnNode) n;
+			if (mi.owner.equals("net/minecraft/server/Bootstrap") && mi.name.equals("bootStrap") && mi.desc.equals("()V")) {
+				return n;
+			}
+		}
+		return null;
 	}
 
 	private static boolean isAfter(AbstractInsnNode a, AbstractInsnNode b) {

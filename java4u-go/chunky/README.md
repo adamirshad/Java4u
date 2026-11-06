@@ -16,8 +16,14 @@ written from scratch.
 - **Small.** The whole loader is about 115 KB. Its only libraries are Mixin, MixinExtras
   and ASM, which Fabric mods need anyway.
 
-Measured on Minecraft 26.3 with Fabric API (44 modules), Sodium and Mod Menu: Chunky was
-ready in under 1 second with 63 Mixin configs, and all mods initialized in about 320 ms.
+Measured on Minecraft 26.3:
+
+- **Fabric API (44 modules), Sodium and Mod Menu:** Chunky was ready in under 1 second with 63
+  Mixin configs, and all mods initialized in about 320 ms.
+- **The Fabulously Optimized modpack:** 143 mods counting nested ones, and 141 Mixin configs.
+  Chunky was ready in 1.3 seconds, and the game reached the title screen.
+- **Dedicated server with Fabric API:** Chunky skipped the client-only modules, initialized the
+  mods in under 0.2 seconds, and the world was ready in 1.9 seconds.
 
 ## What it supports
 
@@ -28,7 +34,12 @@ ready in under 1 second with 63 Mixin configs, and all mods initialized in about
 - Dependency checks (`depends`, `breaks`, `conflicts`, `recommends`) with full version
   ranges (`>=`, `<`, `~`, `^`, `1.21.x`) and clear error messages.
 - Mixin configs, including MixinExtras, with per-mod compatibility levels.
-- Access wideners (v1 and v2) and class tweakers, including `inject-interface`.
+- Access wideners (v1 and v2) and class tweakers (v1 and v2), including `inject-interface`.
+- Client and dedicated server. On a server, Chunky starts mods right after Minecraft sets up
+  its registries, and skips mods and Mixin configs meant only for the client.
+- Multi-release jars, such as Log4j, which many mods rely on.
+- Mixin messages go to `logs/chunky-latest.log`. Run with `-Dchunky.debug=true` to see all of
+  them.
 - The `main`, `client`, `preLaunch` and custom entrypoints, plus mods' own language
   adapters (for example Kotlin).
 - The whole public `net.fabricmc.loader.api` and `net.fabricmc.api` surface:
@@ -37,7 +48,6 @@ ready in under 1 second with 63 Mixin configs, and all mods initialized in about
 
 ## Limits
 
-- Client only for now. Dedicated servers are next.
 - Minecraft 26.1 and newer only. Older, obfuscated versions would need a remapping layer.
 - Mods that reach into Fabric Loader's internal (`impl`) classes won't work.
 - `@Environment` stripping isn't done. Server-only code in client mods is simply never

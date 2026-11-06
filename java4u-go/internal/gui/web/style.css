@@ -401,6 +401,17 @@ output { min-width: 80px; font-weight: 700; }
 .list.installed li.off .mod-text { opacity: 0.55; }
 .btn.done { border-color: var(--line-strong); background: var(--surface-3); color: var(--green); cursor: default; }
 .view-link { color: var(--muted); font-size: 12.5px; }
+.console {
+  height: 260px; margin: 10px 0; padding: 10px 12px; overflow: auto;
+  border: 1px solid var(--line); border-radius: 8px; background: #070a08;
+  font: 12px/1.45 ui-monospace, Consolas, "Cascadia Mono", Menlo, monospace;
+  white-space: pre-wrap; word-break: break-all;
+}
+.check.eula { margin: 8px 0; }
+.browse-grid.compact { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin: 8px 0; }
+.browse-grid.compact .browse-card { padding: 10px; grid-template-columns: 44px 1fr; }
+.browse-grid.compact .browse-card img, .browse-grid.compact .browse-card .noimg { width: 44px; height: 44px; }
+.server-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 6px; box-shadow: 0 0 6px var(--green); }
 .list.wallpapers img { width: 120px; height: 50px; object-fit: cover; border-radius: 6px; }
 .list.wallpapers .name { flex: 1; }
 

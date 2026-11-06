@@ -73,6 +73,9 @@ type Server struct {
 	lastSeen    time.Time
 
 	cache contentCache
+	// task says what busy is doing: "play" or "modpack".
+	task string
+	srv  serverProc
 }
 
 // Start listens on addr (normally "127.0.0.1:0") and returns the server and the URL
@@ -141,7 +144,10 @@ func (s *Server) watchIdle() {
 			return
 		case <-t.C:
 			s.mu.Lock()
-			idle := !s.busy && !s.loggingIn && time.Since(s.lastSeen) > idleExit
+			s.srv.mu.Lock()
+			serving := s.srv.running || s.srv.starting
+			s.srv.mu.Unlock()
+			idle := !s.busy && !s.loggingIn && !serving && time.Since(s.lastSeen) > idleExit
 			s.mu.Unlock()
 			if idle {
 				log.Printf("window closed; exiting")
@@ -185,6 +191,7 @@ func (s *Server) routes() http.Handler {
 
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.Handle("GET /app.js", files)
+	mux.Handle("GET /servers.js", files)
 	mux.Handle("GET /style.css", files)
 	mux.Handle("GET /goose.svg", files)
 	mux.Handle("GET /hero.svg", files)
@@ -209,6 +216,19 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /api/mods/install", s.auth(s.handleInstallMod))
 	mux.HandleFunc("POST /api/mods/toggle", s.auth(s.handleToggleMod))
 	mux.HandleFunc("POST /api/mods/remove", s.auth(s.handleRemoveMod))
+	mux.HandleFunc("POST /api/modpacks/install", s.auth(s.handleInstallModpack))
+	mux.HandleFunc("GET /api/servers", s.auth(s.handleListServers))
+	mux.HandleFunc("POST /api/servers", s.auth(s.handleCreateServer))
+	mux.HandleFunc("POST /api/servers/save", s.auth(s.handleSaveServer))
+	mux.HandleFunc("POST /api/servers/delete", s.auth(s.handleDeleteServer))
+	mux.HandleFunc("POST /api/servers/eula", s.auth(s.handleAcceptEULA))
+	mux.HandleFunc("POST /api/servers/start", s.auth(s.handleStartServer))
+	mux.HandleFunc("POST /api/servers/stop", s.auth(s.handleStopServer))
+	mux.HandleFunc("POST /api/servers/command", s.auth(s.handleServerCommand))
+	mux.HandleFunc("GET /api/servers/console", s.auth(s.handleServerConsole))
+	mux.HandleFunc("GET /api/servers/mods", s.auth(s.handleServerMods))
+	mux.HandleFunc("POST /api/servers/mods/install", s.auth(s.handleServerModInstall))
+	mux.HandleFunc("POST /api/servers/mods/change", s.auth(s.handleServerModChange))
 
 	return s.checkHost(mux)
 }
@@ -320,6 +340,7 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, map[string]any{
 		"busy":        s.busy,
+		"task":        s.task,
 		"running":     s.running,
 		"logging_in":  s.loggingIn,
 		"status":      s.status,
@@ -506,6 +527,7 @@ func (s *Server) handlePlay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.busy = true
+	s.task = "play"
 	s.progress = nil
 	s.log = nil
 	s.logStart = 0
@@ -526,6 +548,7 @@ func (s *Server) handlePlay(w http.ResponseWriter, r *http.Request) {
 		err := s.play(inst, offline, req.Account)
 		s.mu.Lock()
 		s.busy = false
+		s.task = ""
 		s.running = false
 		s.progress = nil
 		s.mu.Unlock()

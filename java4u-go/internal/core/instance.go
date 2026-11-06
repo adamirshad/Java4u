@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 )
 
 type Instance struct {
@@ -18,10 +20,23 @@ type Instance struct {
 	Profile  Profile  `json:"profile"`
 	// Loader is "" (vanilla) or LoaderChunky.
 	Loader string `json:"loader,omitempty"`
+	// Modpack is the name of the Modrinth modpack this instance was made from, if any.
+	Modpack string `json:"modpack,omitempty"`
 }
 
 // LoaderChunky marks an instance that starts through Chunky, Java4U's mod loader.
 const LoaderChunky = "chunky"
+
+// ChunkySupports reports whether Chunky can run a Minecraft version. Chunky needs the
+// unobfuscated releases that started with 26.1, so it never has to remap names.
+func ChunkySupports(id string) bool {
+	end := strings.IndexFunc(id, func(r rune) bool { return r < '0' || r > '9' })
+	if end <= 0 {
+		return false
+	}
+	major, err := strconv.Atoi(id[:end])
+	return err == nil && major >= 26 && major < 1000
+}
 
 // ModsDir is where this instance's mods live.
 func (i *Instance) ModsDir(dirs Dirs) string {

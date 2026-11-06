@@ -53,7 +53,9 @@ public final class ChunkyClassLoader extends SecureClassLoader {
 
 		Source(Path path, ClassLoader loader) throws IOException {
 			this.path = path;
-			this.jar = new JarFile(path.toFile(), false);
+			// Multi-release aware: jars like Log4j ship Java 9+ versions of some classes under
+			// META-INF/versions/, and only those work on modern Java.
+			this.jar = new JarFile(path.toFile(), false, java.util.zip.ZipFile.OPEN_READ, Runtime.version());
 			URL url = path.toUri().toURL();
 			this.domain = new ProtectionDomain(new CodeSource(url, (Certificate[]) null), null, loader, null);
 			this.urlPrefix = "jar:" + url + "!/";
@@ -81,7 +83,11 @@ public final class ChunkyClassLoader extends SecureClassLoader {
 		this.transformer = t;
 	}
 
+	/** Classes Mixin writes at runtime; they must live next to the game classes that use them. */
+	private static final String MIXIN_SYNTHETIC = "org.spongepowered.asm.synthetic.";
+
 	static boolean parentOnly(String name) {
+		if (name.startsWith(MIXIN_SYNTHETIC)) return false;
 		for (String p : PARENT_ONLY) {
 			if (name.startsWith(p)) return true;
 		}
