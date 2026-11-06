@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/adamirshad/Java4u/java4u-go/internal/core"
 	"github.com/adamirshad/Java4u/java4u-go/internal/gui"
@@ -21,6 +22,10 @@ func main() {
 	addr := flag.String("addr", "127.0.0.1:0", "address to listen on (keep it on 127.0.0.1)")
 	dataDir := flag.String("data-dir", "", "where Java4U stores everything (default: JAVA4U_HOME or the platform data folder)")
 	flag.Parse()
+	core.CleanOldBinaries() // left over from an update
+	// Remember our own path now: after an update renames this file to *.old, Windows
+	// reports the new name.
+	self, _ := os.Executable()
 
 	dirs, err := core.DefaultDirs()
 	if *dataDir != "" {
@@ -51,6 +56,22 @@ func main() {
 		}
 	}
 	<-srv.Done()
+	if srv.RestartRequested() {
+		restart(self)
+	}
+}
+
+// restart starts the (just updated) program again with the same arguments.
+func restart(exe string) {
+	if exe == "" {
+		log.Printf("restart: unknown program path")
+		return
+	}
+	cmd := exec.Command(strings.TrimSuffix(exe, ".old"), os.Args[1:]...)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Start(); err != nil {
+		log.Printf("restart: %v", err)
+	}
 }
 
 func fatal(err error) {

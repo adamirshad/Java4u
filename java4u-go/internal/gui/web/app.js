@@ -256,6 +256,7 @@ function render() {
   renderAccounts();
   renderSettings();
   renderSlides();
+  renderUpdate();
   $("about-version").textContent = "v" + data.app_version;
   $("about-dir").textContent = data.data_dir;
   $("footer-version").textContent = "Java4U v" + data.app_version;
@@ -403,6 +404,7 @@ function renderLaunch() {
   $("launch-text").textContent =
     st.running ? "Playing..." :
     st.busy && st.task === "modpack" ? "Installing modpack..." :
+    st.busy && st.task === "update" ? "Updating Java4U..." :
     st.busy ? "Preparing..." :
     mode === "noinstance" ? "Add a Version" :
     mode === "noaccount" ? "Sign In to Play" : "Launch Game";
@@ -696,6 +698,7 @@ function renderVersions() {
   $("loader").value = inst.loader || "";
   renderLoaderDesc();
   loadInstalled();
+  loadGameFiles();
 }
 
 /** Chunky needs Minecraft 26.1 or newer: those versions have real class names. */
@@ -763,7 +766,20 @@ $("delete-yes").addEventListener("click", () => run(async () => {
 
 // ------------------------------------------------------------ Account page
 
+let skinShown = "", stopSkin = () => {};
+function renderSkin() {
+  const acct = data.accounts.find((a) => a.username === account) || data.accounts[0];
+  show($("skin-card"), !!acct);
+  $("token-store").textContent = data.token_store ? `Sign-in tokens are kept in ${data.token_store}.` : "";
+  if (!acct || acct.uuid === skinShown) return;
+  skinShown = acct.uuid;
+  $("skin-name").textContent = acct.username;
+  stopSkin();
+  mountSkinViewer($("skin-view"), acct.uuid).then((stop) => { stopSkin = stop; });
+}
+
 function renderAccounts() {
+  renderSkin();
   const list = $("account-list");
   if (!data.accounts.length) {
     list.replaceChildren(el("li", { class: "muted", textContent: "No accounts yet. Sign in with the Microsoft account that owns Minecraft." }));
@@ -888,7 +904,8 @@ async function poll() {
     const st = await api(`/api/state?epoch=${logEpoch}&since=${logNext}`);
     const loginFinished = lastState.logging_in && !st.logging_in;
     const packFinished = lastState.busy && !st.busy && lastState.task === "modpack";
-    const launchFinished = lastState.busy && !st.busy && !packFinished;
+    const updateFinished = lastState.busy && !st.busy && lastState.task === "update";
+    const launchFinished = lastState.busy && !st.busy && !packFinished && !updateFinished;
     lastState = st;
     appendLog(st.log, st.log_reset);
     logEpoch = st.log_epoch;
@@ -912,14 +929,14 @@ async function poll() {
     } else if (st.running) {
       setStatus("Minecraft is running.", "busy");
     } else if (st.busy) {
-      setStatus(p ? `Downloading ${p.stage}...` : "Preparing Minecraft...", "busy");
+      setStatus(p ? `Downloading ${p.stage}...` : st.task === "update" ? "Updating Java4U..." : "Preparing Minecraft...", "busy");
     } else if (launchFinished) {
       const last = $("log").textContent.trim().split("\n").pop() || "";
       if (last.startsWith("Error:")) { setStatus(last, "err"); show($("drawer"), true); }
       else setStatus("Game closed. Launcher ready!");
     }
 
-    if (loginFinished) await refresh();
+    if (loginFinished || updateFinished) await refresh();
     if (packFinished) {
       // Select the new pack's version and show it on Home, ready to play.
       await refresh();

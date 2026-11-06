@@ -32,39 +32,9 @@ func (s *Server) handleInstallModpack(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, chunky.ErrNotBuilt.Error())
 		return
 	}
-	s.mu.Lock()
-	if s.busy {
-		s.mu.Unlock()
-		writeErr(w, http.StatusConflict, "Wait for the current download or game to finish.")
-		return
-	}
-	s.busy = true
-	s.task = "modpack"
-	s.progress = nil
-	s.status = "Installing " + req.Title + "..."
-	s.mu.Unlock()
-
-	go func() {
-		ctx, cancel := context.WithTimeout(s.ctx, 30*time.Minute)
-		defer cancel()
-		inst, err := core.InstallModpack(ctx, s.client, s.dirs, req.Project, "", s.setProgress)
-		s.mu.Lock()
-		s.busy = false
-		s.task = ""
-		s.progress = nil
-		if err != nil {
-			s.status = "Could not install " + req.Title + ": " + err.Error()
-		} else {
-			mods, _ := core.ListMods(inst.ModsDir(s.dirs))
-			s.status = fmt.Sprintf("Installed %s as \"%s\" (Minecraft %s, %d mods). Press Launch Game to play.",
-				inst.Modpack, inst.Name, inst.Version, len(mods))
-			s.settings.LastInstance = inst.Name
-		}
-		settings := s.settings
-		s.mu.Unlock()
-		settings.Save(s.dirs)
-	}()
-	writeJSON(w, map[string]bool{"ok": true})
+	s.installPack(w, req.Title, func(ctx context.Context) (*core.Instance, error) {
+		return core.InstallModpack(ctx, s.client, s.dirs, req.Project, "", s.setProgress)
+	})
 }
 
 // ---------------------------------------------------------------- servers

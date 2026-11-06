@@ -9,7 +9,8 @@ import (
 )
 
 // Version is Java4U's own version, sent as the user agent and to the game as launcher_version.
-const Version = "0.1.0"
+// Release builds set it with -ldflags "-X github.com/adamirshad/Java4u/java4u-go/internal/core.Version=1.2.3".
+var Version = "0.1.0-dev"
 
 // Dirs holds all on-disk locations used by the launcher.
 type Dirs struct {

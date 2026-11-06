@@ -31,6 +31,8 @@ Usage:
   java4u mods install <instance> <project>     install a mod from Modrinth (slug or id) and what it needs
   java4u mods enable|disable|remove <instance> <file.jar>
   java4u modpack install <project> [--name N]  install a Modrinth modpack as a new Chunky instance
+  java4u modpack import <file.mrpack> [--name N]  install a .mrpack file from disk
+  java4u modpack export <instance> <file.mrpack>  save an instance as a .mrpack
   java4u server create <name> <version>        create a dedicated server ("latest" works)
   java4u server list                           list servers
   java4u server set <name> [--memory MB] [--loader chunky|vanilla]
@@ -41,6 +43,7 @@ Usage:
   java4u account remove <username>             forget a saved account
   java4u launch <instance> [--account NAME] [--offline NAME] [--java PATH] [--dry-run]
   java4u version                               print the Java4U version
+  java4u update [--check]                      update Java4U to the newest release
 
 Global flags (anywhere on the line):
   --data-dir DIR     where Java4U stores everything (or set JAVA4U_HOME)
@@ -169,6 +172,8 @@ func run(ctx context.Context, args []string) error {
 		return a.server(rest)
 	case "modpack":
 		return a.modpack(rest)
+	case "update":
+		return a.update(rest)
 	case "launch":
 		return a.launch(rest)
 	}

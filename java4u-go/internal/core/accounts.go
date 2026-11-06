@@ -35,11 +35,21 @@ func ClientIDFor(override string, store *AccountStore) string {
 type StoredAccount struct {
 	Username      string `json:"username"`
 	UUID          string `json:"uuid"`
-	RefreshToken  string `json:"refresh_token"`
-	MCAccessToken string `json:"mc_access_token"`
+	RefreshToken  string `json:"refresh_token,omitempty"`
+	MCAccessToken string `json:"mc_access_token,omitempty"`
 	// MCExpiresAt is in Unix seconds.
 	MCExpiresAt int64 `json:"mc_expires_at"`
+	// InKeychain means the two tokens live in the OS keychain, not in this file.
+	InKeychain bool `json:"in_keychain,omitempty"`
 }
+
+// accountTokens is what goes into the keychain for one account.
+type accountTokens struct {
+	RefreshToken  string `json:"refresh_token"`
+	MCAccessToken string `json:"mc_access_token"`
+}
+
+func secretKey(uuid string) string { return "account/" + uuid }
 
 type AccountStore struct {
 	ClientID string          `json:"client_id,omitempty"`
@@ -72,14 +82,50 @@ func LoadAccounts(dirs Dirs) (*AccountStore, error) {
 	if err := json.Unmarshal(data, s); err != nil {
 		return nil, fmt.Errorf("%s: %w", dirs.AccountsFile(), err)
 	}
+	migrate := false
+	for i := range s.Accounts {
+		a := &s.Accounts[i]
+		if a.InKeychain {
+			if secrets == nil {
+				continue // signed out in effect; logging in again stores fresh tokens
+			}
+			raw, err := secrets.Get(secretKey(a.UUID))
+			if err != nil {
+				continue
+			}
+			var tok accountTokens
+			if json.Unmarshal([]byte(raw), &tok) == nil {
+				a.RefreshToken, a.MCAccessToken = tok.RefreshToken, tok.MCAccessToken
+			}
+		} else if secrets != nil && a.RefreshToken != "" {
+			migrate = true // tokens from an older version still sit in the file
+		}
+	}
+	if migrate {
+		_ = s.Save(dirs)
+	}
 	return s, nil
 }
 
+// Save writes the accounts file. Tokens go to the OS keychain when there is one; if
+// saving there fails, they stay in the private file instead so the account still works.
 func (s *AccountStore) Save(dirs Dirs) error {
 	if s.Accounts == nil {
 		s.Accounts = []StoredAccount{}
 	}
-	data, err := json.MarshalIndent(s, "", "  ")
+	out := AccountStore{ClientID: s.ClientID, Accounts: make([]StoredAccount, len(s.Accounts))}
+	for i, a := range s.Accounts {
+		if secrets != nil && a.RefreshToken != "" {
+			raw, _ := json.Marshal(accountTokens{a.RefreshToken, a.MCAccessToken})
+			if secrets.Set(secretKey(a.UUID), string(raw)) == nil {
+				a.RefreshToken, a.MCAccessToken, a.InKeychain = "", "", true
+			} else {
+				a.InKeychain = false
+			}
+		}
+		out.Accounts[i] = a
+	}
+	data, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -107,6 +153,8 @@ func (s *AccountStore) Remove(name string) bool {
 	for _, a := range s.Accounts {
 		if !strings.EqualFold(a.Username, name) {
 			kept = append(kept, a)
+		} else if secrets != nil {
+			_ = secrets.Delete(secretKey(a.UUID))
 		}
 	}
 	removed := len(kept) != len(s.Accounts)

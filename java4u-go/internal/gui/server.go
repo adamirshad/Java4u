@@ -73,9 +73,10 @@ type Server struct {
 	lastSeen    time.Time
 
 	cache contentCache
-	// task says what busy is doing: "play" or "modpack".
+	// task says what busy is doing: "play", "modpack" or "update".
 	task string
 	srv  serverProc
+	upd  updateState
 }
 
 // Start listens on addr (normally "127.0.0.1:0") and returns the server and the URL
@@ -103,6 +104,7 @@ func Start(dirs core.Dirs, addr string) (*Server, string, error) {
 
 	go s.fetchVersions()
 	go s.watchIdle()
+	go s.autoCheckUpdates()
 
 	srv := &http.Server{Handler: s.routes(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
@@ -210,9 +212,15 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /api/wallpapers/delete", s.auth(s.handleDeleteWallpaper))
 	mux.HandleFunc("GET /wallpapers/{name}", s.auth(s.handleWallpaperFile))
 	mux.HandleFunc("POST /api/quit", s.auth(s.handleQuit))
+	mux.HandleFunc("POST /api/update/check", s.auth(s.handleCheckUpdate))
+	mux.HandleFunc("POST /api/update/apply", s.auth(s.handleApplyUpdate))
+	mux.HandleFunc("POST /api/update/restart", s.auth(s.handleRestart))
 	mux.HandleFunc("GET /api/news", s.auth(s.handleNews))
 	mux.HandleFunc("GET /api/browse", s.auth(s.handleBrowse))
 	mux.HandleFunc("GET /api/avatar/{uuid}", s.auth(s.handleAvatar))
+	mux.HandleFunc("GET /api/skin/{uuid}", s.auth(s.handleSkin))
+	mux.Handle("GET /skin3d.js", files)
+	mux.Handle("GET /gamefiles.js", files)
 	mux.HandleFunc("GET /api/mods", s.auth(s.handleListMods))
 	mux.HandleFunc("POST /api/mods/install", s.auth(s.handleInstallMod))
 	mux.HandleFunc("POST /api/mods/toggle", s.auth(s.handleToggleMod))
@@ -220,6 +228,12 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /api/mods/installed", s.auth(s.handleInstalled))
 	mux.HandleFunc("POST /api/mods/toggle-all", s.auth(s.handleToggleAll))
 	mux.HandleFunc("POST /api/modpacks/install", s.auth(s.handleInstallModpack))
+	mux.HandleFunc("POST /api/modpacks/import", s.auth(s.handleImportMrpack))
+	mux.HandleFunc("GET /api/instances/{name}/export", s.auth(s.handleExportMrpack))
+	mux.HandleFunc("GET /api/instances/{name}/files", s.auth(s.handleGameFiles))
+	mux.HandleFunc("GET /api/instances/{name}/screenshots/{file}", s.auth(s.handleScreenshot))
+	mux.HandleFunc("GET /api/instances/{name}/worlds/{folder}/icon", s.auth(s.handleWorldIcon))
+	mux.HandleFunc("POST /api/open-folder", s.auth(s.handleOpenFolder))
 	mux.HandleFunc("GET /api/servers", s.auth(s.handleListServers))
 	mux.HandleFunc("POST /api/servers", s.auth(s.handleCreateServer))
 	mux.HandleFunc("POST /api/servers/save", s.auth(s.handleSaveServer))
@@ -401,6 +415,7 @@ func (s *Server) handleData(w http.ResponseWriter, r *http.Request) {
 		"instances":      instances,
 		"accounts":       accounts,
 		"has_client_id":  store.ClientID != "",
+		"token_store":    core.KeychainName(),
 		"settings":       settings,
 		"versions":       versions,
 		"versions_error": versionsErr,
@@ -411,6 +426,7 @@ func (s *Server) handleData(w http.ResponseWriter, r *http.Request) {
 		"profiles":   profiles,
 		"chunky":     map[string]any{"version": chunky.Version, "available": chunkyAvailable()},
 		"wallpapers": core.ListWallpapers(s.dirs),
+		"update":     s.updateInfo(),
 	})
 }
 

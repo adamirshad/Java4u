@@ -306,7 +306,19 @@ func (s *Server) handleAvatar(w http.ResponseWriter, r *http.Request) {
 	w.Write(v.([]byte))
 }
 
-func (s *Server) renderAvatar(ctx context.Context, id string) ([]byte, error) {
+// playerSkin is a player's skin, normalised to the 64x64 layout.
+type playerSkin struct {
+	img  *image.RGBA
+	slim bool
+}
+
+// fetchSkin looks the player up on Mojang's session server and downloads their skin.
+// Results are cached for a few hours.
+func (s *Server) fetchSkin(ctx context.Context, id string) (*playerSkin, error) {
+	key := "skin|" + strings.ToLower(id)
+	if v, ok := s.cache.get(key, 6*time.Hour); ok {
+		return v.(*playerSkin), nil
+	}
 	body, err := s.fetch(ctx, profileAPI+id)
 	if err != nil {
 		return nil, err
@@ -320,7 +332,7 @@ func (s *Server) renderAvatar(ctx context.Context, id string) ([]byte, error) {
 	if err := json.Unmarshal(body, &prof); err != nil {
 		return nil, err
 	}
-	skinURL := ""
+	skinURL, slim := "", false
 	for _, p := range prof.Properties {
 		if p.Name != "textures" {
 			continue
@@ -332,7 +344,10 @@ func (s *Server) renderAvatar(ctx context.Context, id string) ([]byte, error) {
 		var tex struct {
 			Textures struct {
 				Skin struct {
-					URL string `json:"url"`
+					URL      string `json:"url"`
+					Metadata struct {
+						Model string `json:"model"`
+					} `json:"metadata"`
 				} `json:"SKIN"`
 			} `json:"textures"`
 		}
@@ -340,6 +355,7 @@ func (s *Server) renderAvatar(ctx context.Context, id string) ([]byte, error) {
 			return nil, err
 		}
 		skinURL = tex.Textures.Skin.URL
+		slim = tex.Textures.Skin.Metadata.Model == "slim"
 	}
 	u, err := url.Parse(skinURL)
 	if err != nil || u.Host != "textures.minecraft.net" {
@@ -350,13 +366,37 @@ func (s *Server) renderAvatar(ctx context.Context, id string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	skin, err := png.Decode(bytes.NewReader(skinData))
+	img, err := png.Decode(bytes.NewReader(skinData))
 	if err != nil {
 		return nil, err
 	}
-	if b := skin.Bounds(); b.Dx() < 64 || b.Dy() < 32 {
+	b := img.Bounds()
+	if b.Dx() != 64 || (b.Dy() != 64 && b.Dy() != 32) {
 		return nil, errors.New("unexpected skin size")
 	}
+	sk := &playerSkin{img: normaliseSkin(img), slim: slim}
+	s.cache.put(key, sk)
+	return sk, nil
+}
+
+// normaliseSkin turns an old 64x32 skin into the 64x64 layout by copying the right arm
+// and leg into the left-limb slots, as the game does.
+func normaliseSkin(src image.Image) *image.RGBA {
+	out := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	draw.Draw(out, image.Rect(0, 0, 64, src.Bounds().Dy()), src, src.Bounds().Min, draw.Src)
+	if src.Bounds().Dy() == 32 {
+		draw.Draw(out, image.Rect(16, 48, 32, 64), out, image.Pt(0, 16), draw.Src)  // leg
+		draw.Draw(out, image.Rect(32, 48, 48, 64), out, image.Pt(40, 16), draw.Src) // arm
+	}
+	return out
+}
+
+func (s *Server) renderAvatar(ctx context.Context, id string) ([]byte, error) {
+	sk, err := s.fetchSkin(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	skin := sk.img
 
 	// Face is at (8,8)-(16,16); the hat layer at (40,8)-(48,16). Scale 8x8 up to 64x64.
 	const scale = 8
@@ -374,4 +414,28 @@ func (s *Server) renderAvatar(ctx context.Context, id string) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// handleSkin serves a player's whole skin (64x64 PNG) for the 3D preview. With
+// ?info=1 it answers {"slim": bool} instead, so the preview can draw thin arms.
+func (s *Server) handleSkin(w http.ResponseWriter, r *http.Request) {
+	id := strings.ReplaceAll(r.PathValue("uuid"), "-", "")
+	if !uuidRe.MatchString(id) {
+		http.NotFound(w, r)
+		return
+	}
+	sk, err := s.fetchSkin(r.Context(), id)
+	if err != nil {
+		http.Error(w, "no skin", http.StatusNotFound)
+		return
+	}
+	if r.URL.Query().Get("info") != "" {
+		writeJSON(w, map[string]bool{"slim": sk.slim})
+		return
+	}
+	var buf bytes.Buffer
+	png.Encode(&buf, sk.img)
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "private, max-age=3600")
+	w.Write(buf.Bytes())
 }
