@@ -137,6 +137,14 @@
               <p id="profile-desc" class="muted"></p>
             </div>
             <div class="field">
+              <label for="loader">Mod loader</label>
+              <select id="loader">
+                <option value="">Vanilla (no mods)</option>
+                <option value="chunky">Chunky (runs Fabric mods)</option>
+              </select>
+              <p id="loader-desc" class="muted"></p>
+            </div>
+            <div class="field">
               <label for="jvm-args">Extra JVM arguments</label>
               <input type="text" id="jvm-args" class="wide">
             </div>
@@ -153,6 +161,9 @@
                 <button id="delete-no" class="btn">Cancel</button>
               </span>
             </div>
+            <hr>
+            <div class="row"><h2>Mods</h2><span class="spacer"></span><button class="btn" data-goto="mods">Browse mods</button></div>
+            <ul id="installed-list" class="list installed"></ul>
           </div>
         </div>
       </div>
@@ -162,7 +173,8 @@
     <section id="page-mods" class="page hidden">
       <div class="card">
         <h2>Mods</h2>
-        <p class="muted">Popular mods from Modrinth for your selected version. One-click installing arrives with Fabric support; for now, "View" opens the mod on Modrinth.</p>
+        <p class="muted">Fabric mods from Modrinth, run by <strong>Chunky</strong>, Java4U's own mod loader.
+          Installing into <strong id="mods-target">-</strong>; anything a mod needs is installed with it.</p>
         <div class="row"><input type="search" id="mods-q" class="wide" placeholder="Search mods..."></div>
       </div>
       <div class="browse-grid" id="mods-results"></div>

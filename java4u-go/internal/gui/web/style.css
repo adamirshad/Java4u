@@ -395,6 +395,12 @@ output { min-width: 80px; font-weight: 700; }
 .list .item small { color: var(--muted); }
 .list.accounts li, .list.wallpapers li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .list.accounts .avatar { width: 36px; height: 36px; }
+.list.installed li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.list.installed .mod-text { flex: 1; min-width: 0; }
+.list.installed .mod-text small { color: var(--muted); }
+.list.installed li.off .mod-text { opacity: 0.55; }
+.btn.done { border-color: var(--line-strong); background: var(--surface-3); color: var(--green); cursor: default; }
+.view-link { color: var(--muted); font-size: 12.5px; }
 .list.wallpapers img { width: 120px; height: 50px; object-fit: cover; border-radius: 6px; }
 .list.wallpapers .name { flex: 1; }
 

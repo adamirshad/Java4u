@@ -344,7 +344,7 @@ function ramChoices(inst) {
 function renderQuick() {
   const inst = current();
   fillSelect($("sel-instance"), data.instances.map((i) => [i.name, `Minecraft ${i.version}  (${i.name})`]), selected);
-  $("q-version").textContent = inst ? `Minecraft ${inst.version}` : "No versions yet";
+  $("q-version").textContent = inst ? `Minecraft ${inst.version}${inst.loader === "chunky" ? " · Chunky" : ""}` : "No versions yet";
   fillSelect($("sel-profile"), data.profiles.map((p) => [p.id, p.label]), inst?.profile);
   $("q-profile").textContent = inst ? (data.profiles.find((p) => p.id === inst.profile)?.label ?? inst.profile) : "-";
   const ram = ramChoices(inst);
@@ -358,6 +358,7 @@ function selectInstance(name) {
   editorFor = null;
   render();
   loadHomeMods();
+  loadInstalled();
   api("/api/settings", { last_instance: name }).catch(() => {});
 }
 
@@ -371,6 +372,7 @@ async function saveInstance(patch) {
       profile: inst.profile,
       jvm_args: (inst.jvm_args || []).join(" "),
       java_path: inst.java_path || "",
+      loader: inst.loader || "",
       ...patch,
     });
     editorFor = null;
@@ -493,6 +495,99 @@ function viewButton(url, label = "View") {
   return el("a", { class: "btn primary small", href: url, target: "_blank", rel: "noopener noreferrer", textContent: label });
 }
 
+// ------------------------------------------------------------ installing mods (Chunky)
+
+let installed = { instance: null, mods: [] };
+const installedProjects = () => new Set(installed.mods.map((m) => m.project_id).filter(Boolean));
+
+async function loadInstalled() {
+  if (!selected) {
+    installed = { instance: null, mods: [] };
+  } else {
+    try {
+      installed = await api(`/api/mods?instance=${encodeURIComponent(selected)}`);
+    } catch {
+      installed = { instance: selected, mods: [] };
+    }
+  }
+  renderInstalled();
+  refreshInstallButtons();
+}
+
+/** An Install button for a Modrinth project, plus a small link to its page. */
+function installControls(p) {
+  const btn = el("button", { class: "btn primary small", "data-project": p.project_id || p.slug });
+  btn.addEventListener("click", () => installMod(p, btn));
+  const box = el("span", { class: "install-box" }, btn, " ", el("a", {
+    class: "view-link", href: p.url, target: "_blank", rel: "noopener noreferrer", textContent: "page",
+  }));
+  setInstallState(btn);
+  return box;
+}
+
+function setInstallState(btn) {
+  const done = installedProjects().has(btn.dataset.project);
+  btn.classList.toggle("done", done);
+  btn.classList.toggle("primary", !done);
+  if (!btn.dataset.busy) btn.textContent = done ? "Installed ✓" : "Install";
+  btn.disabled = done || !!btn.dataset.busy || !selected;
+}
+
+function refreshInstallButtons() {
+  document.querySelectorAll("button[data-project]").forEach(setInstallState);
+  const inst = current();
+  $("mods-target").textContent = inst ? `${inst.name} (Minecraft ${inst.version})` : "no version selected";
+}
+
+async function installMod(p, btn) {
+  const inst = current();
+  if (!inst) return go("versions");
+  if (inst.loader !== "chunky" && !confirm(`Mods run on Chunky. Switch "${inst.name}" to Chunky and install ${p.title}?`)) return;
+  btn.dataset.busy = "1";
+  btn.textContent = "Installing...";
+  btn.disabled = true;
+  setStatus(`Installing ${p.title}...`, "busy");
+  try {
+    const out = await api("/api/mods/install", { instance: inst.name, project: p.project_id || p.slug });
+    setStatus(out.message);
+    if (out.switched) { editorFor = null; await refresh(); }
+  } catch (e) {
+    setStatus(`Could not install ${p.title}: ${e.message}`, "err");
+  } finally {
+    delete btn.dataset.busy;
+    await loadInstalled();
+  }
+}
+
+function renderInstalled() {
+  const list = $("installed-list");
+  const inst = current();
+  if (!inst) {
+    list.replaceChildren();
+    return;
+  }
+  if (!installed.mods.length) {
+    list.replaceChildren(el("li", { class: "muted", textContent: inst.loader === "chunky"
+      ? "No mods yet. Use Browse mods to add some."
+      : "Pick Chunky as the mod loader (or install a mod) to add mods to this version." }));
+    return;
+  }
+  list.replaceChildren(...installed.mods.map((m) => el("li", { class: m.enabled ? "" : "off" },
+    el("input", { type: "checkbox", checked: m.enabled, title: m.enabled ? "Turn off" : "Turn on",
+      onchange: (e) => run(async () => {
+        await api("/api/mods/toggle", { instance: inst.name, file: m.file, enabled: e.target.checked });
+        await loadInstalled();
+      }) }),
+    el("div", { class: "mod-text" },
+      el("strong", { textContent: m.name }), " ",
+      el("small", { textContent: `${m.version || ""}  ·  ${m.file}` })),
+    el("button", { class: "btn", textContent: "Remove", onclick: () => run(async () => {
+      if (!confirm(`Remove ${m.name}?`)) return;
+      await api("/api/mods/remove", { instance: inst.name, file: m.file });
+      await loadInstalled();
+    }) }))));
+}
+
 async function browse(type, q = "", limit = 20, version = "") {
   const params = new URLSearchParams({ type, q, limit: String(limit) });
   if (version) params.set("version", version);
@@ -508,7 +603,7 @@ async function loadHomeMods() {
       img(m.icon),
       el("div", { class: "mod-name", textContent: m.title }),
       el("div", { class: "mod-meta", textContent: `${compact(m.downloads)} downloads` }),
-      viewButton(m.url))));
+      installControls(m))));
   } catch {
     $("home-mods").replaceChildren(el("p", { class: "muted", textContent: "Modrinth is unavailable right now." }));
   }
@@ -548,7 +643,7 @@ async function searchBrowse(type) {
         el("div", { class: "meta" },
           el("span", { textContent: `by ${m.author}` }),
           el("span", { textContent: `${compact(m.downloads)} downloads` }),
-          viewButton(m.url))))));
+          type === "mod" ? installControls(m) : viewButton(m.url))))));
   } catch (e) {
     box.replaceChildren(el("p", { class: "muted", textContent: e.message }));
   }
@@ -596,6 +691,28 @@ function renderVersions() {
   renderProfileDesc();
   $("jvm-args").value = (inst.jvm_args || []).join(" ");
   $("java-path").value = inst.java_path || "";
+  $("loader").value = inst.loader || "";
+  renderLoaderDesc();
+  loadInstalled();
+}
+
+/** Chunky needs Minecraft 26.1 or newer: those versions have real class names. */
+function chunkySupports(version) {
+  const major = parseInt(version, 10);
+  return major >= 26 && major < 1000;
+}
+
+function renderLoaderDesc() {
+  const inst = current();
+  const chunkyOpt = $("loader").querySelector('option[value="chunky"]');
+  const ok = inst && chunkySupports(inst.version) && data.chunky.available;
+  chunkyOpt.disabled = !ok;
+  $("loader-desc").textContent = !data.chunky.available
+    ? "This build of Java4U doesn't include Chunky."
+    : !ok ? "Chunky runs Minecraft 26.1 and newer."
+    : $("loader").value === "chunky"
+      ? `Chunky ${data.chunky.version}: Java4U's own lightweight mod loader. Runs Fabric mods with no remapping on 26.x.`
+      : "Plain Minecraft, no mods.";
 }
 
 function updateCreateButton() {
@@ -623,11 +740,13 @@ $("memory-auto").addEventListener("click", () => {
   $("memory-out").textContent = `${data.memory.recommended} MB`;
 });
 $("profile").addEventListener("change", renderProfileDesc);
+$("loader").addEventListener("change", renderLoaderDesc);
 $("save").addEventListener("click", () => saveInstance({
   memory_mb: Number($("memory").value),
   profile: $("profile").value,
   jvm_args: $("jvm-args").value,
   java_path: $("java-path").value,
+  loader: $("loader").value,
 }));
 
 function hideConfirm() { show($("confirm-delete"), false); show($("delete"), true); }
@@ -813,6 +932,7 @@ drawArt();
 drawIcons();
 run(async () => {
   await refresh();
+  await loadInstalled();
   loadNews();
   loadHomeMods();
   loadHomePacks();

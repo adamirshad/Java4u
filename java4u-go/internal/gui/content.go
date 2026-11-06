@@ -157,6 +157,7 @@ func imageURL(p string) string {
 // ------------------------------------------------------------ Modrinth
 
 type project struct {
+	ProjectID   string `json:"project_id"`
 	Title       string `json:"title"`
 	Slug        string `json:"slug"`
 	Description string `json:"description"`
@@ -192,6 +193,9 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	facets := [][]string{{"project_type:" + kind}}
+	if kind == "mod" {
+		facets = append(facets, []string{"categories:fabric"}) // Chunky runs Fabric mods
+	}
 	if gameVersion != "" {
 		facets = append(facets, []string{"versions:" + gameVersion})
 	}
@@ -212,6 +216,7 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	}
 	var res struct {
 		Hits []struct {
+			ProjectID       string   `json:"project_id"`
 			Title           string   `json:"title"`
 			Slug            string   `json:"slug"`
 			Description     string   `json:"description"`
@@ -233,6 +238,7 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 			img = h.Gallery[0]
 		}
 		out = append(out, project{
+			ProjectID:   h.ProjectID,
 			Title:       h.Title,
 			Slug:        h.Slug,
 			Description: h.Description,

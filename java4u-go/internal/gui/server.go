@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/adamirshad/Java4u/java4u-go/internal/chunky"
 	"github.com/adamirshad/Java4u/java4u-go/internal/core"
 )
 
@@ -204,6 +205,10 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /api/news", s.auth(s.handleNews))
 	mux.HandleFunc("GET /api/browse", s.auth(s.handleBrowse))
 	mux.HandleFunc("GET /api/avatar/{uuid}", s.auth(s.handleAvatar))
+	mux.HandleFunc("GET /api/mods", s.auth(s.handleListMods))
+	mux.HandleFunc("POST /api/mods/install", s.auth(s.handleInstallMod))
+	mux.HandleFunc("POST /api/mods/toggle", s.auth(s.handleToggleMod))
+	mux.HandleFunc("POST /api/mods/remove", s.auth(s.handleRemoveMod))
 
 	return s.checkHost(mux)
 }
@@ -380,6 +385,7 @@ func (s *Server) handleData(w http.ResponseWriter, r *http.Request) {
 			"recommended": core.RecommendedMemoryMB(),
 		},
 		"profiles":   profiles,
+		"chunky":     map[string]any{"version": chunky.Version, "available": chunkyAvailable()},
 		"wallpapers": core.ListWallpapers(s.dirs),
 	})
 }
@@ -407,6 +413,7 @@ func (s *Server) handleSaveInstance(w http.ResponseWriter, r *http.Request) {
 		Profile  string `json:"profile"`
 		JVMArgs  string `json:"jvm_args"`
 		JavaPath string `json:"java_path"`
+		Loader   string `json:"loader"`
 	}
 	if !readJSON(w, r, &req) {
 		return
@@ -414,6 +421,19 @@ func (s *Server) handleSaveInstance(w http.ResponseWriter, r *http.Request) {
 	inst, err := core.LoadInstance(s.dirs, req.Name)
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	switch req.Loader {
+	case "", "vanilla":
+		inst.Loader = ""
+	case core.LoaderChunky:
+		if !chunky.SupportsVersion(inst.Version) {
+			writeErr(w, http.StatusBadRequest, "Chunky supports Minecraft 26.1 and newer.")
+			return
+		}
+		inst.Loader = core.LoaderChunky
+	default:
+		writeErr(w, http.StatusBadRequest, "unknown mod loader")
 		return
 	}
 	if req.MemoryMB < 512 {
@@ -542,12 +562,22 @@ func (s *Server) play(inst *core.Instance, offline, account string) error {
 	}
 	s.logLine("Using Java: " + java)
 
+	var ch *core.ChunkyLaunch
+	if inst.Loader == core.LoaderChunky {
+		ch, err = chunky.Prepare(ctx, s.client, s.dirs, s.setProgress)
+		if err != nil {
+			return err
+		}
+		s.logLine("Starting with Chunky " + chunky.Version)
+	}
+
 	cmd, err := core.BuildCommand(s.dirs, v, core.LaunchOptions{
 		Java:         java,
 		GameDir:      inst.GameDir(s.dirs),
 		Account:      acct,
 		MemoryMB:     inst.MemoryMB,
 		ExtraJVMArgs: inst.EffectiveJVMArgs(),
+		Chunky:       ch,
 	})
 	if err != nil {
 		return err

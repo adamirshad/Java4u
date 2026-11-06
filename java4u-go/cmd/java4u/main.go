@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/adamirshad/Java4u/java4u-go/internal/chunky"
 	"github.com/adamirshad/Java4u/java4u-go/internal/core"
 )
 
@@ -25,6 +26,10 @@ Usage:
   java4u instance create <name> <version>      create an instance
   java4u instance list                         list instances
   java4u instance set <name> [--memory MB | --auto-memory] [--profile off|balanced|performance] [--java PATH]
+                         [--loader chunky|vanilla]
+  java4u mods list <instance>                  list an instance's mods
+  java4u mods install <instance> <project>     install a mod from Modrinth (slug or id) and what it needs
+  java4u mods enable|disable|remove <instance> <file.jar>
   java4u account login                         sign in with Microsoft
   java4u account list                          list saved accounts
   java4u account remove <username>             forget a saved account
@@ -152,6 +157,8 @@ func run(ctx context.Context, args []string) error {
 		return a.instance(rest)
 	case "account":
 		return a.account(rest)
+	case "mods":
+		return a.mods(rest)
 	case "launch":
 		return a.launch(rest)
 	}
@@ -294,6 +301,7 @@ func (a *app) instance(args []string) error {
 		autoMemory := fs.Bool("auto-memory", false, "")
 		profile := fs.String("profile", "", "")
 		java := fs.String("java", "", "")
+		loader := fs.String("loader", "", "")
 		pos, err := parse(fs, args)
 		if err != nil {
 			return err
@@ -330,10 +338,22 @@ func (a *app) instance(args []string) error {
 		if *java != "" {
 			inst.JavaPath = *java
 		}
+		switch *loader {
+		case "":
+		case "vanilla":
+			inst.Loader = ""
+		case core.LoaderChunky:
+			if !chunky.SupportsVersion(inst.Version) {
+				return fmt.Errorf("Chunky supports Minecraft 26.1 and newer; %s is %s", inst.Name, inst.Version)
+			}
+			inst.Loader = core.LoaderChunky
+		default:
+			return fmt.Errorf("unknown loader %q (use chunky or vanilla)", *loader)
+		}
 		if err := inst.Save(a.dirs); err != nil {
 			return err
 		}
-		fmt.Printf("saved: %d MB, %s profile\n", inst.MemoryMB, inst.Profile)
+		fmt.Printf("saved: %d MB, %s profile, %s\n", inst.MemoryMB, inst.Profile, loaderName(inst))
 		return nil
 	}
 	return fmt.Errorf("unknown instance command %q", sub)
@@ -407,6 +427,88 @@ func (a *app) account(args []string) error {
 	return fmt.Errorf("unknown account command %q", sub)
 }
 
+func loaderName(i *core.Instance) string {
+	if i.Loader == core.LoaderChunky {
+		return "Chunky"
+	}
+	return "vanilla"
+}
+
+func (a *app) mods(args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing mods command: list, install, enable, disable or remove")
+	}
+	sub, args := args[0], args[1:]
+	pos, err := parse(newFlags(sub, &a.g), args)
+	if err != nil {
+		return err
+	}
+	if len(pos) == 0 {
+		return errors.New("missing instance name")
+	}
+	if err := a.setup(); err != nil {
+		return err
+	}
+	inst, err := core.LoadInstance(a.dirs, pos[0])
+	if err != nil {
+		return err
+	}
+	dir := inst.ModsDir(a.dirs)
+
+	switch sub {
+	case "list":
+		if err := need(pos, 1, ""); err != nil {
+			return err
+		}
+		mods, err := core.ListMods(dir)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s (Minecraft %s, %s): %d mod(s)\n", inst.Name, inst.Version, loaderName(inst), len(mods))
+		for _, m := range mods {
+			state := ""
+			if !m.Enabled {
+				state = "  [disabled]"
+			}
+			fmt.Printf("  %-28s %-16s %s%s\n", m.Name, m.Version, m.File, state)
+		}
+		return nil
+
+	case "install":
+		if err := need(pos, 2, "instance and Modrinth project"); err != nil {
+			return err
+		}
+		if inst.Loader != core.LoaderChunky {
+			if !chunky.SupportsVersion(inst.Version) {
+				return fmt.Errorf("mods need Chunky, which supports Minecraft 26.1 and newer; %s is %s", inst.Name, inst.Version)
+			}
+			inst.Loader = core.LoaderChunky
+			if err := inst.Save(a.dirs); err != nil {
+				return err
+			}
+			fmt.Printf("switched %s to Chunky so it can run mods\n", inst.Name)
+		}
+		files, err := core.InstallMod(a.ctx, a.client, dir, pos[1], inst.Version)
+		for _, f := range files {
+			fmt.Printf("installed %s %s (%s)\n", f.File, f.Version, f.Reason)
+		}
+		return err
+
+	case "enable", "disable":
+		if err := need(pos, 2, "instance and mod file"); err != nil {
+			return err
+		}
+		return core.SetModEnabled(dir, pos[1], sub == "enable")
+
+	case "remove":
+		if err := need(pos, 2, "instance and mod file"); err != nil {
+			return err
+		}
+		return core.RemoveMod(dir, pos[1])
+	}
+	return fmt.Errorf("unknown mods command %q", sub)
+}
+
 func (a *app) launch(args []string) error {
 	fs := newFlags("launch", &a.g)
 	account := fs.String("account", "", "")
@@ -451,10 +553,19 @@ func (a *app) launch(args []string) error {
 		javaOverride = inst.JavaPath
 	}
 	javaPath, err := core.ResolveJava(a.ctx, a.client, a.dirs, v, javaOverride, b.update)
-	b.clear()
 	if err != nil {
+		b.clear()
 		return err
 	}
+	var ch *core.ChunkyLaunch
+	if inst.Loader == core.LoaderChunky {
+		ch, err = chunky.Prepare(a.ctx, a.client, a.dirs, b.update)
+		if err != nil {
+			b.clear()
+			return err
+		}
+	}
+	b.clear()
 
 	cmd, err := core.BuildCommand(a.dirs, v, core.LaunchOptions{
 		Java:         javaPath,
@@ -462,6 +573,7 @@ func (a *app) launch(args []string) error {
 		Account:      acct,
 		MemoryMB:     inst.MemoryMB,
 		ExtraJVMArgs: inst.EffectiveJVMArgs(),
+		Chunky:       ch,
 	})
 	if err != nil {
 		return err

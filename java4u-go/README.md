@@ -8,6 +8,8 @@ Mojang or Microsoft.
   runtimes, Microsoft sign-in, instances, launch command builder.
 - `cmd/java4u`: `java4u` command-line tool.
 - `cmd/java4u-gui`: `java4u-gui` desktop app.
+- `chunky/`: **Chunky**, Java4U's own mod loader. It's written in Java and runs Fabric mods
+  (see [chunky/README.md](chunky/README.md)).
 
 Java4U's only dependency outside Go's standard library is `golang.org/x/image` (for webp and bmp
 wallpapers). It needs no C compiler, so it builds for Windows, macOS and Linux from any machine.
@@ -17,8 +19,10 @@ wallpapers). It needs no C compiler, so it builds for Windows, macOS and Linux f
 Push the repository to GitHub. The `Java4U` workflow builds Windows, macOS and Linux executables,
 which you can download from the run's **Artifacts** (Actions tab).
 
-On your own machine, install Go 1.25 or newer from https://go.dev/dl, then run this from this folder:
+On your own machine, install Go 1.25 or newer from https://go.dev/dl, plus a JDK 21 or newer to
+build Chunky. Then run this from this folder:
 
+    go run ./tools/buildchunky                             # builds Chunky, which Java4U embeds
     go build ./cmd/java4u
     go build -ldflags "-H=windowsgui" ./cmd/java4u-gui     # Windows: no console window
     go build ./cmd/java4u-gui                              # macOS / Linux
@@ -49,12 +53,27 @@ the data folder, so you can move or delete the original. A darkening slider keep
     java4u list                          # releases (add --snapshots / --all)
     java4u install latest                # download client, libraries, assets
     java4u instance create main 1.21.1
-    java4u account login                 # Microsoft sign-in (needs --client-id the first time)
+    java4u account login                 # Microsoft sign-in
     java4u launch main                   # plays as your saved account
     java4u launch main --offline Steve   # offline, dev/testing only
     java4u launch main --dry-run         # print the java command (access token hidden)
     java4u instance set main --auto-memory --profile performance
     java4u install 1.21.1 --verify       # re-check every file's SHA1 (repair)
+
+## Mods
+
+Mods run on **Chunky**, Java4U's own lightweight mod loader, on Minecraft 26.1 and newer. Chunky
+runs Fabric mods as they are, so the whole Fabric mod library on Modrinth works with it.
+
+In the app, open **Mods** and press **Install** on any mod. Java4U fetches the Fabric build for
+your version's Minecraft release, checks its hash, installs anything it requires, and switches the
+version to Chunky. Each version's page lists its mods, where you can turn them on or off or
+remove them. From the command line:
+
+    java4u mods install main sodium      # also switches "main" to Chunky
+    java4u mods list main
+    java4u mods disable main sodium-fabric-0.9.2+mc26.3.jar
+    java4u instance set main --loader vanilla   # back to plain Minecraft (mods stay on disk)
 
 Data lives in `%APPDATA%\Java4U`, `~/Library/Application Support/Java4U` or `~/.local/share/java4u`.
 Override it with `--data-dir` or `JAVA4U_HOME`. Java4U uses the same file formats as the Rust
@@ -108,5 +127,8 @@ Done:
 - Microsoft sign-in (device code, Xbox, XSTS, Minecraft services) with token refresh.
 - Automatic Java runtime download and JVM profiles.
 - Desktop app with wallpapers.
+- Chunky mod loader, running Fabric mods on 26.x. Tested with Fabric API, Sodium and Mod Menu.
+- One-click mod installs from Modrinth, with dependencies.
 
-Next: Fabric/Quilt (`inheritsFrom`), Modrinth, Forge/NeoForge, modpacks.
+Next: Chunky on dedicated servers, modpack (.mrpack) installs, and remapping so Chunky can
+support versions before 26.1.

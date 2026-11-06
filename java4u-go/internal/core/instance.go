@@ -16,6 +16,16 @@ type Instance struct {
 	JavaPath string   `json:"java_path,omitempty"`
 	JVMArgs  []string `json:"jvm_args"`
 	Profile  Profile  `json:"profile"`
+	// Loader is "" (vanilla) or LoaderChunky.
+	Loader string `json:"loader,omitempty"`
+}
+
+// LoaderChunky marks an instance that starts through Chunky, Java4U's mod loader.
+const LoaderChunky = "chunky"
+
+// ModsDir is where this instance's mods live.
+func (i *Instance) ModsDir(dirs Dirs) string {
+	return filepath.Join(i.GameDir(dirs), "mods")
 }
 
 const instanceFile = "instance.json"

@@ -23,6 +23,12 @@ jobs:
         with:
           go-version-file: java4u-go/go.mod
           cache-dependency-path: java4u-go/go.sum
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Build Chunky (the mod loader)
+        run: go run ./tools/buildchunky
       - run: go vet ./...
       - run: go test ./...
 
@@ -38,6 +44,12 @@ jobs:
         with:
           go-version-file: java4u-go/go.mod
           cache-dependency-path: java4u-go/go.sum
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Build Chunky (embedded in every Java4U binary)
+        run: go run ./tools/buildchunky
       - name: Cross-compile
         run: |
           set -e

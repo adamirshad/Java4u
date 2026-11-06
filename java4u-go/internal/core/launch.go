@@ -17,6 +17,15 @@ type LaunchOptions struct {
 	Account      Account
 	MemoryMB     int
 	ExtraJVMArgs []string
+	// Chunky, when set, starts the game through the Chunky mod loader.
+	Chunky *ChunkyLaunch
+}
+
+// ChunkyLaunch is what BuildCommand needs to start the game through Chunky.
+type ChunkyLaunch struct {
+	Jar       string   // the Chunky loader jar
+	Libraries []string // Mixin, MixinExtras and ASM jars
+	MainClass string
 }
 
 // syncAssets copies hashed asset objects to human-readable paths (pre-1.7 "virtual"
@@ -77,6 +86,30 @@ func BuildCommand(dirs Dirs, v *VersionJSON, opts LaunchOptions) (*exec.Cmd, err
 	}
 	if err := os.MkdirAll(opts.GameDir, 0o755); err != nil {
 		return nil, err
+	}
+
+	// With Chunky, the JVM classpath holds only Chunky and its libraries. The game jar and
+	// the game's libraries go to Chunky's own class loader (listed in a file) so mods can
+	// patch them.
+	mainClass := v.MainClass
+	var chunkyProps []string
+	if ch := opts.Chunky; ch != nil {
+		listFile := filepath.Join(opts.GameDir, ".chunky", "classpath.txt")
+		if err := os.MkdirAll(filepath.Dir(listFile), 0o755); err != nil {
+			return nil, err
+		}
+		if err := os.WriteFile(listFile, []byte(strings.Join(cp, "\n")+"\n"), 0o644); err != nil {
+			return nil, err
+		}
+		classpath = strings.Join(append([]string{ch.Jar}, ch.Libraries...), sep)
+		mainClass = ch.MainClass
+		chunkyProps = []string{
+			"-Dchunky.mainClass=" + v.MainClass,
+			"-Dchunky.gameVersion=" + v.ID,
+			"-Dchunky.gameDir=" + opts.GameDir,
+			"-Dchunky.gameJar=" + dirs.VersionJar(v.ID),
+			"-Dchunky.classpathFile=" + listFile,
+		}
 	}
 	assetsRoot := dirs.AssetsDir()
 	gameAssets := assetsRoot
@@ -141,7 +174,8 @@ func BuildCommand(dirs Dirs, v *VersionJSON, opts LaunchOptions) (*exec.Cmd, err
 	for _, a := range jvmTpl {
 		args = append(args, sub.Replace(a))
 	}
-	args = append(args, v.MainClass)
+	args = append(args, chunkyProps...)
+	args = append(args, mainClass)
 	for _, a := range gameTpl {
 		args = append(args, sub.Replace(a))
 	}
