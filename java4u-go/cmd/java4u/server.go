@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/adamirshad/Java4u/java4u-go/internal/chunky"
 	"github.com/adamirshad/Java4u/java4u-go/internal/core"
@@ -84,33 +86,68 @@ func (a *app) server(args []string) error {
 }
 
 func (a *app) modpack(args []string) error {
-	if len(args) == 0 || args[0] != "install" {
-		return errors.New("usage: java4u modpack install <project> [--name NAME]")
+	const usage = "usage: java4u modpack install <project> [--name NAME] | import <file.mrpack> [--name NAME] | export <instance> <file.mrpack>"
+	if len(args) == 0 {
+		return errors.New(usage)
 	}
-	fs := newFlags("install", &a.g)
+	sub := args[0]
+	fs := newFlags(sub, &a.g)
 	name := fs.String("name", "", "")
 	pos, err := parse(fs, args[1:])
 	if err != nil {
 		return err
 	}
-	if err := need(pos, 1, "Modrinth modpack (slug or id)"); err != nil {
-		return err
+	switch sub {
+	case "install", "import":
+		what := "Modrinth modpack (slug or id)"
+		if sub == "import" {
+			what = ".mrpack file"
+		}
+		if err := need(pos, 1, what); err != nil {
+			return err
+		}
+		if err := a.setup(); err != nil {
+			return err
+		}
+		b := &bar{}
+		var inst *core.Instance
+		if sub == "install" {
+			inst, err = core.InstallModpack(a.ctx, a.client, a.dirs, pos[0], *name, b.update)
+		} else {
+			n := *name
+			if n == "" {
+				n = strings.TrimSuffix(filepath.Base(pos[0]), filepath.Ext(pos[0]))
+			}
+			inst, err = core.InstallMrpack(a.ctx, a.client, a.dirs, pos[0], n, "", b.update)
+		}
+		b.clear()
+		if err != nil {
+			return err
+		}
+		mods, _ := core.ListMods(inst.ModsDir(a.dirs))
+		fmt.Printf("installed %s as '%s' (Minecraft %s, Chunky, %d mods). Play it with: java4u launch \"%s\"\n",
+			inst.Modpack, inst.Name, inst.Version, len(mods), inst.Name)
+		return nil
+	case "export":
+		if err := need(pos, 2, "instance and output file"); err != nil {
+			return err
+		}
+		if err := a.setup(); err != nil {
+			return err
+		}
+		inst, err := core.LoadInstance(a.dirs, pos[0])
+		if err != nil {
+			return err
+		}
+		linked, bundled, err := core.ExportMrpack(a.ctx, a.client, a.dirs, inst, pos[1])
+		if err != nil {
+			return err
+		}
+		fmt.Printf("wrote %s: %d mods linked to Modrinth, %d bundled in the pack\n", pos[1], linked, bundled)
+		return nil
 	}
-	if err := a.setup(); err != nil {
-		return err
-	}
-	b := &bar{}
-	inst, err := core.InstallModpack(a.ctx, a.client, a.dirs, pos[0], *name, b.update)
-	b.clear()
-	if err != nil {
-		return err
-	}
-	mods, _ := core.ListMods(inst.ModsDir(a.dirs))
-	fmt.Printf("installed %s as '%s' (Minecraft %s, Chunky, %d mods). Play it with: java4u launch \"%s\"\n",
-		inst.Modpack, inst.Name, inst.Version, len(mods), inst.Name)
-	return nil
+	return errors.New(usage)
 }
-
 func loaderLabel(loader string) string {
 	if loader == core.LoaderChunky {
 		return "Chunky"
@@ -249,5 +286,36 @@ func (a *app) runServer(name string, acceptEULA bool) error {
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("the server exited with %w", err)
 	}
+	return nil
+}
+
+func (a *app) update(args []string) error {
+	fs := newFlags("update", &a.g)
+	check := fs.Bool("check", false, "")
+	if _, err := parse(fs, args); err != nil {
+		return err
+	}
+	if err := a.setup(); err != nil {
+		return err
+	}
+	rel, err := core.LatestRelease(a.ctx, a.client, core.ReleasesURL)
+	if err != nil {
+		return err
+	}
+	if !core.NewerVersion(rel.Version(), core.Version) {
+		fmt.Printf("Java4U %s is the newest version.\n", core.Version)
+		return nil
+	}
+	fmt.Printf("Java4U %s is available (you have %s): %s\n", rel.Version(), core.Version, rel.Page)
+	if *check {
+		return nil
+	}
+	b := &bar{}
+	err = core.ApplyUpdate(a.ctx, a.client, rel, "", b.update)
+	b.clear()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("updated to %s\n", rel.Version())
 	return nil
 }

@@ -50,6 +50,19 @@ jobs:
           java-version: "21"
       - name: Build Chunky (embedded in every Java4U binary)
         run: go run ./tools/buildchunky
+      - name: App icon
+        run: go run ./tools/mkicon
+      - name: Windows icon and version info (same as release builds)
+        run: |
+          set -e
+          for cmd in java4u java4u-gui; do
+            manifest=cli
+            if [ "$cmd" = java4u-gui ]; then manifest=gui; fi
+            (cd "cmd/$cmd" && go run github.com/tc-hib/go-winres@v0.3.3 simply \
+              --arch amd64,arm64 --manifest "$manifest" --icon ../../build/java4u.ico \
+              --product-name Java4U --product-version 0.0.0.0 --file-version 0.0.0.0 \
+              --file-description "Java4U Minecraft launcher" --original-filename "$cmd.exe")
+          done
       - name: Cross-compile
         run: |
           set -e
@@ -66,4 +79,32 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: java4u-binaries
-          path: java4u-go/dist/
+          path: |
+            java4u-go/dist/
+            java4u-go/build/
+
+  # Builds the Windows installer the same way release.yml does, so a broken installer
+  # script shows up here rather than on release day.
+  installer:
+    needs: build
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: java4u-go
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: java4u-binaries
+          path: java4u-go
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc "/DAppVersion=0.0.0-ci" "/DArch=amd64" "packaging\windows\java4u.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: java4u-installer
+          path: java4u-go/dist/java4u-setup-*.exe

@@ -2,3 +2,5 @@
 /internal/chunky/dist/chunky.jar
 /chunky/build/
 /dist/
+/build/
+*.syso

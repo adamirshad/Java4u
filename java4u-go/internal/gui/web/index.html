@@ -6,9 +6,11 @@
 <title>Java4U</title>
 <link rel="icon" href="/goose.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
+<script src="/skin3d.js" defer></script>
 <script src="/app.js" defer></script>
 <script src="/servers.js" defer></script>
 <script src="/installed.js" defer></script>
+<script src="/gamefiles.js" defer></script>
 </head>
 <body>
 
@@ -51,6 +53,12 @@
   </nav>
 
   <main id="main">
+    <div id="update-banner" class="update-banner hidden">
+      <span id="update-text"></span>
+      <span class="spacer"></span>
+      <a id="update-notes" target="_blank" rel="noopener noreferrer">What's new</a>
+      <button id="update-go" class="btn primary"></button>
+    </div>
     <!-- ============================================================ Home -->
     <section id="page-home" class="page">
       <div class="hero" id="hero">
@@ -157,6 +165,7 @@
             </div>
             <div class="row">
               <button id="save" class="btn primary">Save</button>
+              <button id="export-pack" class="btn" title="Save this version as a Modrinth pack (.mrpack) to share or back up">Export .mrpack</button>
               <button id="delete" class="btn">Delete...</button>
               <span id="confirm-delete" class="hidden">
                 <span class="danger">This deletes worlds and mods too.</span>
@@ -167,6 +176,11 @@
             <hr>
             <div class="row"><h2>Mods</h2><span class="spacer"></span><button class="btn" data-goto="mods">Browse mods</button></div>
             <ul id="installed-list" class="list installed"></ul>
+            <hr>
+            <div class="row"><h2>Worlds</h2><span class="spacer"></span><button class="btn" data-open-folder="saves">Open folder</button></div>
+            <ul id="world-list" class="list worlds"></ul>
+            <div class="row"><h2>Screenshots</h2><span class="spacer"></span><button class="btn" data-open-folder="screenshots">Open folder</button></div>
+            <div id="shot-grid" class="shot-grid"></div>
           </div>
         </div>
       </div>
@@ -217,10 +231,14 @@
         <h2>Modpacks</h2>
         <p class="muted">Fabric modpacks from Modrinth that run on Chunky. Installing one makes a new version with all
           its mods and settings, ready to play.</p>
-        <div class="row"><input type="search" id="packs-q" class="wide" placeholder="Search modpacks..."></div>
+        <div class="row"><input type="search" id="packs-q" class="wide" placeholder="Search modpacks...">
+          <label class="btn" for="mrpack-file" title="Install a Modrinth pack file from this computer">Import .mrpack...</label>
+          <input type="file" id="mrpack-file" accept=".mrpack" class="hidden"></div>
       </div>
       <div class="browse-grid" id="packs-results"></div>
     </section>
+
+    <div id="shot-viewer" class="shot-viewer hidden" role="dialog" aria-label="Screenshot"><img id="shot-big" alt=""></div>
 
     <!-- ============================================================ Servers -->
     <section id="page-servers" class="page hidden">
@@ -275,6 +293,14 @@
 
     <!-- ============================================================ Account -->
     <section id="page-account" class="page hidden">
+      <div id="skin-card" class="card skin-card hidden">
+        <div id="skin-view" class="skin-view"></div>
+        <div>
+          <h2 id="skin-name"></h2>
+          <p class="muted">Drag the model to turn it. Change your skin at minecraft.net; Java4U shows it here a few hours later.</p>
+          <p id="token-store" class="muted"></p>
+        </div>
+      </div>
       <div class="card">
         <h2>Microsoft accounts</h2>
         <ul id="account-list" class="list accounts"></ul>
@@ -327,6 +353,7 @@
           <p>A free, open-source Minecraft: Java Edition launcher written in Go.</p>
           <p class="muted">Data folder: <code id="about-dir"></code></p>
           <p><a href="https://github.com/adamirshad/Java4u" target="_blank" rel="noopener noreferrer">Source code on GitHub</a></p>
+          <div class="row"><button id="check-update" class="btn">Check for updates</button><span id="update-result" class="muted"></span></div>
           <p class="muted">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
             Mods and modpacks come from Modrinth; news comes from Mojang.</p>
         </div>

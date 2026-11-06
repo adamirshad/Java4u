@@ -28,9 +28,10 @@ This project is not affiliated with Mojang or Microsoft.
 
 ## Get it
 
-Every push to `main` builds Windows, macOS and Linux executables. Download them from the
-latest run of the **Java4U** workflow on the Actions tab (under **Artifacts**). Then run
-`java4u-gui`.
+Download the newest version from [Releases](https://github.com/adamirshad/Java4u/releases).
+On Windows, run `java4u-setup-windows-amd64.exe`. On other systems, unzip
+`java4u-<os>-<arch>.zip` and run `java4u-gui`. Java4U tells you when a new version is out and
+can update itself.
 
 To build it yourself, you need Go 1.25+ and a JDK 21+. From `java4u-go`:
 

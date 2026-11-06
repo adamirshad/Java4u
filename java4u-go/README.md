@@ -16,8 +16,22 @@ wallpapers). It needs no C compiler, so it builds for Windows, macOS and Linux f
 
 ## Get an executable
 
-Push the repository to GitHub. The `Java4U` workflow builds Windows, macOS and Linux executables,
-which you can download from the run's **Artifacts** (Actions tab).
+Download the newest release from https://github.com/adamirshad/Java4u/releases:
+
+- **Windows:** `java4u-setup-windows-amd64.exe` (or `-arm64`). It installs for your user only,
+  with no admin prompt, into `%LOCALAPPDATA%\Programs\Java4U`, and adds a Start menu shortcut and
+  an uninstaller. Uninstalling keeps your data folder (worlds, mods, accounts).
+- **Any system:** `java4u-<os>-<arch>.zip` holds `java4u-gui` and `java4u`. Unzip and run.
+- `checksums.txt` lists the SHA-256 of every file.
+
+Java4U checks for a newer release when it starts and shows a banner. **Update now** downloads
+it, checks it against `checksums.txt`, swaps in the new programs and offers to restart.
+`java4u update` does the same from the command line (`--check` only reports). Builds you make
+yourself are marked `-dev` and only check when you press **Check for updates** on the About page.
+Set `JAVA4U_NO_UPDATE_CHECK=1` to turn off the automatic check.
+
+Every push also builds executables and a test installer in the `Java4U` workflow
+(Actions tab, **Artifacts**).
 
 On your own machine, install Go 1.25 or newer from https://go.dev/dl, plus a JDK 21 or newer to
 build Chunky. Then run this from this folder:
@@ -27,6 +41,19 @@ build Chunky. Then run this from this folder:
     go build -ldflags "-H=windowsgui" ./cmd/java4u-gui     # Windows: no console window
     go build ./cmd/java4u-gui                              # macOS / Linux
     go test ./...
+    go run ./tools/mkicon                                  # app icon into build/
+
+## Releasing
+
+Push a version tag. The **Release** workflow builds every platform, puts the icon and version
+details into the Windows programs, builds the installers with Inno Setup
+(`packaging/windows/java4u.iss`), writes `checksums.txt`, and publishes a GitHub Release:
+
+    git tag v0.2.0
+    git push origin v0.2.0
+
+A tag with a dash (`v0.2.0-rc.1`) is published as a pre-release, which the updater ignores. The
+installers are not code-signed yet, so Windows SmartScreen warns on first run.
 
 ## Desktop app
 
@@ -85,9 +112,23 @@ have a build for a version Chunky runs. Java4U does the rest:
   from Modrinth, GitHub or GitLab.
 - Copies in the pack's configs. Paths that would escape the version's folder are refused.
 
-If anything fails, the half-installed version is removed. From the command line:
+If anything fails, the half-installed version is removed.
+
+**Your own packs:** **Import .mrpack...** on the Modpacks page installs a pack file from your
+computer. **Export .mrpack** in a version's editor saves that version as a pack for any launcher
+that reads Modrinth packs. Mods Modrinth knows (matched by file hash) are listed as downloads;
+other mods, plus `config`, resource packs, shader packs and `options.txt`, go inside the pack.
+Disabled mods are left out. From the command line:
 
     java4u modpack install fabulously-optimized
+    java4u modpack import "My Pack.mrpack"
+    java4u modpack export main main.mrpack
+
+## Worlds, screenshots and skins
+
+Each version's editor lists its worlds (newest first, with icon and size) and screenshots
+(click one to enlarge). **Open folder** shows them in your file manager. The Account page shows
+a 3D model of your skin that you can drag to turn.
 
 ## Servers
 
@@ -144,8 +185,11 @@ To use your own Azure app instead (for a fork, for example):
 3. Run `java4u account login --client-id <ID>`, set `JAVA4U_CLIENT_ID`, or paste the ID under
    "Advanced" on the Accounts tab. Java4U remembers the ID used for each sign-in.
 
-Accounts are stored in `accounts.json` in the data folder (mode 0600 on Unix). Moving tokens into
-the OS keychain is a planned hardening step.
+Sign-in tokens are kept in the system keychain: Windows Credential Manager, the macOS Keychain,
+or the Secret Service on Linux (through `secret-tool`). `accounts.json` keeps only names and
+IDs. Tokens saved by older versions move into the keychain the next time Java4U reads them.
+Without a keychain (for example a Linux server without `secret-tool`), tokens stay in
+`accounts.json`, which only you can read (mode 0600).
 
 ## Status
 
@@ -162,5 +206,9 @@ Done:
   nested ones).
 - One-click mod and modpack installs from Modrinth, with dependencies.
 - Dedicated servers with a console, commands and server mods.
+- `.mrpack` import and export, worlds and screenshots lists, and a 3D skin preview.
+- Tokens in the system keychain.
+- Releases with a Windows installer, and self-update.
 
-Next: remapping so Chunky can support versions before 26.1, and modpack updates.
+Next: remapping so Chunky can support versions before 26.1, modpack updates, and code-signed
+installers.
