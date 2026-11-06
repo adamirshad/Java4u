@@ -1,0 +1,593 @@
+// Command java4u is the command-line front-end of the Java4U Minecraft launcher.
+package main
+
+import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"sync"
+
+	"github.com/adamirshad/Java4u/java4u-go/internal/chunky"
+	"github.com/adamirshad/Java4u/java4u-go/internal/core"
+)
+
+const usage = `java4u - a Minecraft launcher written in Go
+
+Usage:
+  java4u list [--snapshots | --all]            list Minecraft versions
+  java4u install <version> [--verify]          download client, libraries, assets ("latest" works)
+  java4u instance create <name> <version>      create an instance
+  java4u instance list                         list instances
+  java4u instance set <name> [--memory MB | --auto-memory] [--profile off|balanced|performance] [--java PATH]
+                         [--loader chunky|vanilla]
+  java4u mods list <instance>                  list an instance's mods
+  java4u mods install <instance> <project>     install a mod from Modrinth (slug or id) and what it needs
+  java4u mods enable|disable|remove <instance> <file.jar>
+  java4u account login                         sign in with Microsoft
+  java4u account list                          list saved accounts
+  java4u account remove <username>             forget a saved account
+  java4u launch <instance> [--account NAME] [--offline NAME] [--java PATH] [--dry-run]
+  java4u version                               print the Java4U version
+
+Global flags (anywhere on the line):
+  --data-dir DIR     where Java4U stores everything (or set JAVA4U_HOME)
+  --client-id ID     use your own Azure app for Microsoft sign-in (or set JAVA4U_CLIENT_ID)
+  -v                 show download retries and other warnings
+`
+
+type globals struct {
+	dataDir  string
+	clientID string
+	verbose  bool
+}
+
+// newFlags makes a flag set that also understands the global flags.
+func newFlags(name string, g *globals) *flag.FlagSet {
+	fs := flag.NewFlagSet(name, flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	fs.StringVar(&g.dataDir, "data-dir", g.dataDir, "")
+	fs.StringVar(&g.clientID, "client-id", g.clientID, "")
+	fs.BoolVar(&g.verbose, "v", g.verbose, "")
+	return fs
+}
+
+// parse lets flags and positional arguments appear in any order.
+func parse(fs *flag.FlagSet, args []string) ([]string, error) {
+	var pos []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return nil, err
+		}
+		args = fs.Args()
+		if len(args) == 0 {
+			return pos, nil
+		}
+		pos = append(pos, args[0])
+		args = args[1:]
+	}
+}
+
+func need(pos []string, n int, what string) error {
+	if len(pos) < n {
+		return fmt.Errorf("missing %s (see `java4u help`)", what)
+	}
+	if len(pos) > n {
+		return fmt.Errorf("unexpected argument %q", pos[n])
+	}
+	return nil
+}
+
+// bar is a one-line progress display on stderr.
+type bar struct {
+	mu    sync.Mutex
+	shown bool
+}
+
+func (b *bar) update(stage string, done, total int) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	const width = 40
+	filled := width
+	if total > 0 {
+		filled = done * width / total
+	}
+	fmt.Fprintf(os.Stderr, "\r%12s [%s%s] %d/%d  ", stage, strings.Repeat("=", filled), strings.Repeat(" ", width-filled), done, total)
+	b.shown = true
+}
+
+func (b *bar) clear() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.shown {
+		fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 80))
+		b.shown = false
+	}
+}
+
+type app struct {
+	ctx    context.Context
+	g      globals
+	dirs   core.Dirs
+	client *http.Client
+}
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	if err := run(ctx, os.Args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			fmt.Print(usage)
+			return
+		}
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run(ctx context.Context, args []string) error {
+	g := globals{dataDir: os.Getenv("JAVA4U_HOME"), clientID: os.Getenv("JAVA4U_CLIENT_ID")}
+	top := newFlags("java4u", &g)
+	if err := top.Parse(args); err != nil {
+		return err
+	}
+	args = top.Args()
+	if len(args) == 0 || args[0] == "help" {
+		fmt.Print(usage)
+		return nil
+	}
+	cmd, rest := args[0], args[1:]
+
+	a := &app{ctx: ctx, g: g, client: core.NewClient()}
+	switch cmd {
+	case "version":
+		fmt.Println("java4u", core.Version)
+		return nil
+	case "list":
+		return a.list(rest)
+	case "install":
+		return a.install(rest)
+	case "instance":
+		return a.instance(rest)
+	case "account":
+		return a.account(rest)
+	case "mods":
+		return a.mods(rest)
+	case "launch":
+		return a.launch(rest)
+	}
+	return fmt.Errorf("unknown command %q (see `java4u help`)", cmd)
+}
+
+// setup applies the global flags once the subcommand's flags have been parsed.
+func (a *app) setup() error {
+	if !a.g.verbose {
+		log.SetOutput(io.Discard)
+	}
+	if a.g.dataDir != "" {
+		a.dirs = core.NewDirs(a.g.dataDir)
+		return nil
+	}
+	d, err := core.DefaultDirs()
+	a.dirs = d
+	return err
+}
+
+func (a *app) resolve(id string) (string, error) {
+	if !core.IsAlias(id) {
+		return id, nil
+	}
+	m, err := core.FetchManifest(a.ctx, a.client)
+	if err != nil {
+		return "", err
+	}
+	return m.ResolveAlias(id), nil
+}
+
+func (a *app) list(args []string) error {
+	fs := newFlags("list", &a.g)
+	snapshots := fs.Bool("snapshots", false, "")
+	all := fs.Bool("all", false, "")
+	pos, err := parse(fs, args)
+	if err != nil {
+		return err
+	}
+	if err := need(pos, 0, ""); err != nil {
+		return err
+	}
+	if err := a.setup(); err != nil {
+		return err
+	}
+	m, err := core.FetchManifest(a.ctx, a.client)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("latest release: %s   latest snapshot: %s\n\n", m.Latest.Release, m.Latest.Snapshot)
+	for _, v := range m.Versions {
+		if *all || v.Kind == "release" || (*snapshots && v.Kind == "snapshot") {
+			fmt.Printf("%-24s %s\n", v.ID, v.Kind)
+		}
+	}
+	return nil
+}
+
+func (a *app) install(args []string) error {
+	fs := newFlags("install", &a.g)
+	verify := fs.Bool("verify", false, "")
+	pos, err := parse(fs, args)
+	if err != nil {
+		return err
+	}
+	if err := need(pos, 1, "version"); err != nil {
+		return err
+	}
+	if err := a.setup(); err != nil {
+		return err
+	}
+	id, err := a.resolve(pos[0])
+	if err != nil {
+		return err
+	}
+	b := &bar{}
+	_, err = core.InstallVersion(a.ctx, a.client, a.dirs, id, *verify, b.update)
+	b.clear()
+	if err != nil {
+		return err
+	}
+	fmt.Println("installed", id)
+	return nil
+}
+
+func (a *app) instance(args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing instance command: create, list or set")
+	}
+	sub, args := args[0], args[1:]
+	switch sub {
+	case "create":
+		pos, err := parse(newFlags("create", &a.g), args)
+		if err != nil {
+			return err
+		}
+		if err := need(pos, 2, "name and version"); err != nil {
+			return err
+		}
+		if err := a.setup(); err != nil {
+			return err
+		}
+		id, err := a.resolve(pos[1])
+		if err != nil {
+			return err
+		}
+		inst, err := core.CreateInstance(a.dirs, pos[0], id)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("created instance '%s' (%s)\n", inst.Name, inst.Version)
+		return nil
+
+	case "list":
+		pos, err := parse(newFlags("list", &a.g), args)
+		if err != nil {
+			return err
+		}
+		if err := need(pos, 0, ""); err != nil {
+			return err
+		}
+		if err := a.setup(); err != nil {
+			return err
+		}
+		all, err := core.ListInstances(a.dirs)
+		if err != nil {
+			return err
+		}
+		if len(all) == 0 {
+			fmt.Println("no instances yet; try: java4u instance create main latest")
+		}
+		for _, i := range all {
+			fmt.Printf("%-24s %-10s %d MB, %s profile\n", i.Name, i.Version, i.MemoryMB, i.Profile)
+		}
+		return nil
+
+	case "set":
+		fs := newFlags("set", &a.g)
+		memory := fs.Int("memory", 0, "")
+		autoMemory := fs.Bool("auto-memory", false, "")
+		profile := fs.String("profile", "", "")
+		java := fs.String("java", "", "")
+		loader := fs.String("loader", "", "")
+		pos, err := parse(fs, args)
+		if err != nil {
+			return err
+		}
+		if err := need(pos, 1, "instance name"); err != nil {
+			return err
+		}
+		if *memory != 0 && *autoMemory {
+			return errors.New("use either --memory or --auto-memory, not both")
+		}
+		if err := a.setup(); err != nil {
+			return err
+		}
+		inst, err := core.LoadInstance(a.dirs, pos[0])
+		if err != nil {
+			return err
+		}
+		if *autoMemory {
+			inst.MemoryMB = core.RecommendedMemoryMB()
+		}
+		if *memory != 0 {
+			if *memory < 512 {
+				return errors.New("memory must be at least 512 MB")
+			}
+			inst.MemoryMB = *memory
+		}
+		if *profile != "" {
+			p, err := core.ParseProfile(*profile)
+			if err != nil {
+				return err
+			}
+			inst.Profile = p
+		}
+		if *java != "" {
+			inst.JavaPath = *java
+		}
+		switch *loader {
+		case "":
+		case "vanilla":
+			inst.Loader = ""
+		case core.LoaderChunky:
+			if !chunky.SupportsVersion(inst.Version) {
+				return fmt.Errorf("Chunky supports Minecraft 26.1 and newer; %s is %s", inst.Name, inst.Version)
+			}
+			inst.Loader = core.LoaderChunky
+		default:
+			return fmt.Errorf("unknown loader %q (use chunky or vanilla)", *loader)
+		}
+		if err := inst.Save(a.dirs); err != nil {
+			return err
+		}
+		fmt.Printf("saved: %d MB, %s profile, %s\n", inst.MemoryMB, inst.Profile, loaderName(inst))
+		return nil
+	}
+	return fmt.Errorf("unknown instance command %q", sub)
+}
+
+func (a *app) account(args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing account command: login, list or remove")
+	}
+	sub, args := args[0], args[1:]
+	pos, err := parse(newFlags(sub, &a.g), args)
+	if err != nil {
+		return err
+	}
+	if err := a.setup(); err != nil {
+		return err
+	}
+	switch sub {
+	case "login":
+		if err := need(pos, 0, ""); err != nil {
+			return err
+		}
+		store, err := core.LoadAccounts(a.dirs)
+		if err != nil {
+			return err
+		}
+		id := core.ClientIDFor(a.g.clientID, store)
+		acct, err := core.Login(a.ctx, a.client, a.dirs, id, func(dc *core.DeviceCode) {
+			fmt.Printf("To sign in, open %s and enter the code: %s\n", dc.VerificationURI, dc.UserCode)
+			fmt.Println("Waiting for you to finish...")
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Signed in as %s (%s)\n", acct.Username, acct.UUID)
+		return nil
+
+	case "list":
+		if err := need(pos, 0, ""); err != nil {
+			return err
+		}
+		store, err := core.LoadAccounts(a.dirs)
+		if err != nil {
+			return err
+		}
+		if len(store.Accounts) == 0 {
+			fmt.Println("no accounts; run: java4u account login")
+		}
+		for _, acc := range store.Accounts {
+			fmt.Printf("%-18s %s\n", acc.Username, acc.UUID)
+		}
+		return nil
+
+	case "remove":
+		if err := need(pos, 1, "username"); err != nil {
+			return err
+		}
+		store, err := core.LoadAccounts(a.dirs)
+		if err != nil {
+			return err
+		}
+		if !store.Remove(pos[0]) {
+			return fmt.Errorf("no saved account named %s", pos[0])
+		}
+		if err := store.Save(a.dirs); err != nil {
+			return err
+		}
+		fmt.Println("removed", pos[0])
+		return nil
+	}
+	return fmt.Errorf("unknown account command %q", sub)
+}
+
+func loaderName(i *core.Instance) string {
+	if i.Loader == core.LoaderChunky {
+		return "Chunky"
+	}
+	return "vanilla"
+}
+
+func (a *app) mods(args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing mods command: list, install, enable, disable or remove")
+	}
+	sub, args := args[0], args[1:]
+	pos, err := parse(newFlags(sub, &a.g), args)
+	if err != nil {
+		return err
+	}
+	if len(pos) == 0 {
+		return errors.New("missing instance name")
+	}
+	if err := a.setup(); err != nil {
+		return err
+	}
+	inst, err := core.LoadInstance(a.dirs, pos[0])
+	if err != nil {
+		return err
+	}
+	dir := inst.ModsDir(a.dirs)
+
+	switch sub {
+	case "list":
+		if err := need(pos, 1, ""); err != nil {
+			return err
+		}
+		mods, err := core.ListMods(dir)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s (Minecraft %s, %s): %d mod(s)\n", inst.Name, inst.Version, loaderName(inst), len(mods))
+		for _, m := range mods {
+			state := ""
+			if !m.Enabled {
+				state = "  [disabled]"
+			}
+			fmt.Printf("  %-28s %-16s %s%s\n", m.Name, m.Version, m.File, state)
+		}
+		return nil
+
+	case "install":
+		if err := need(pos, 2, "instance and Modrinth project"); err != nil {
+			return err
+		}
+		if inst.Loader != core.LoaderChunky {
+			if !chunky.SupportsVersion(inst.Version) {
+				return fmt.Errorf("mods need Chunky, which supports Minecraft 26.1 and newer; %s is %s", inst.Name, inst.Version)
+			}
+			inst.Loader = core.LoaderChunky
+			if err := inst.Save(a.dirs); err != nil {
+				return err
+			}
+			fmt.Printf("switched %s to Chunky so it can run mods\n", inst.Name)
+		}
+		files, err := core.InstallMod(a.ctx, a.client, dir, pos[1], inst.Version)
+		for _, f := range files {
+			fmt.Printf("installed %s %s (%s)\n", f.File, f.Version, f.Reason)
+		}
+		return err
+
+	case "enable", "disable":
+		if err := need(pos, 2, "instance and mod file"); err != nil {
+			return err
+		}
+		return core.SetModEnabled(dir, pos[1], sub == "enable")
+
+	case "remove":
+		if err := need(pos, 2, "instance and mod file"); err != nil {
+			return err
+		}
+		return core.RemoveMod(dir, pos[1])
+	}
+	return fmt.Errorf("unknown mods command %q", sub)
+}
+
+func (a *app) launch(args []string) error {
+	fs := newFlags("launch", &a.g)
+	account := fs.String("account", "", "")
+	offline := fs.String("offline", "", "")
+	java := fs.String("java", "", "")
+	dryRun := fs.Bool("dry-run", false, "")
+	pos, err := parse(fs, args)
+	if err != nil {
+		return err
+	}
+	if err := need(pos, 1, "instance name"); err != nil {
+		return err
+	}
+	if err := a.setup(); err != nil {
+		return err
+	}
+	inst, err := core.LoadInstance(a.dirs, pos[0])
+	if err != nil {
+		return err
+	}
+
+	// Sort out the account first, so a missing login fails before any big download.
+	var acct core.Account
+	if *offline != "" {
+		fmt.Fprintln(os.Stderr, "warning: offline mode is for development and testing only")
+		acct, err = core.OfflineAccount(*offline)
+	} else {
+		acct, err = core.AccountForLaunch(a.ctx, a.client, a.dirs, *account, a.g.clientID)
+	}
+	if err != nil {
+		return err
+	}
+
+	b := &bar{}
+	v, err := core.InstallVersion(a.ctx, a.client, a.dirs, inst.Version, false, b.update)
+	if err != nil {
+		b.clear()
+		return err
+	}
+	javaOverride := *java
+	if javaOverride == "" {
+		javaOverride = inst.JavaPath
+	}
+	javaPath, err := core.ResolveJava(a.ctx, a.client, a.dirs, v, javaOverride, b.update)
+	if err != nil {
+		b.clear()
+		return err
+	}
+	var ch *core.ChunkyLaunch
+	if inst.Loader == core.LoaderChunky {
+		ch, err = chunky.Prepare(a.ctx, a.client, a.dirs, b.update)
+		if err != nil {
+			b.clear()
+			return err
+		}
+	}
+	b.clear()
+
+	cmd, err := core.BuildCommand(a.dirs, v, core.LaunchOptions{
+		Java:         javaPath,
+		GameDir:      inst.GameDir(a.dirs),
+		Account:      acct,
+		MemoryMB:     inst.MemoryMB,
+		ExtraJVMArgs: inst.EffectiveJVMArgs(),
+		Chunky:       ch,
+	})
+	if err != nil {
+		return err
+	}
+	if *dryRun {
+		fmt.Println(core.DescribeCommand(cmd, acct.AccessToken))
+		return nil
+	}
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start Java: %w", err)
+	}
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("Minecraft exited with %w", err)
+	}
+	return nil
+}

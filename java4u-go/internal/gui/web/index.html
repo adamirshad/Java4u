@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Java4U</title>
+<link rel="icon" href="/goose.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+
+<!-- ============================================================ header -->
+<header class="topbar">
+  <div class="brand">
+    <div class="logo-tile" data-pixel="goose"></div>
+    <div>
+      <div class="brand-name">Java4U</div>
+      <div class="brand-sub">Minecraft Java Launcher</div>
+    </div>
+  </div>
+  <span class="pill"><span class="pill-dot">&#10003;</span> Free &bull; Forever</span>
+  <span class="spacer"></span>
+
+  <div class="account-chip" id="account-chip" tabindex="0" role="button" aria-haspopup="menu">
+    <div class="avatar" id="chip-avatar"></div>
+    <div class="chip-text">
+      <div class="chip-name" id="chip-name">Not signed in</div>
+      <div class="chip-state"><span class="dot" id="chip-dot"></span><span id="chip-state">Sign in to play</span></div>
+    </div>
+    <span class="chev">&#9662;</span>
+    <div class="menu hidden" id="account-menu" role="menu"></div>
+  </div>
+  <button id="quit" class="icon-btn" title="Close Java4U">&#x2715;</button>
+</header>
+
+<div class="shell">
+  <!-- ============================================================ sidebar -->
+  <nav class="sidebar">
+    <button class="nav active" data-page="home"><span class="nav-ico" data-icon="home"></span>Home</button>
+    <button class="nav" data-page="versions"><span class="nav-ico" data-icon="versions"></span>Versions</button>
+    <button class="nav" data-page="mods"><span class="nav-ico" data-icon="mods"></span>Mods</button>
+    <button class="nav" data-page="modpacks"><span class="nav-ico" data-icon="modpacks"></span>Modpacks</button>
+    <button class="nav" data-page="account"><span class="nav-ico" data-icon="account"></span>Account</button>
+    <button class="nav" data-page="settings"><span class="nav-ico" data-icon="settings"></span>Settings</button>
+    <button class="nav" data-page="about"><span class="nav-ico" data-icon="about"></span>About</button>
+    <div class="sidebar-art" data-pixel="goose-scene"></div>
+  </nav>
+
+  <main id="main">
+    <!-- ============================================================ Home -->
+    <section id="page-home" class="page">
+      <div class="hero" id="hero">
+        <div class="hero-bg" id="hero-bg"></div>
+        <div class="hero-goose" data-pixel="goose-on-block"></div>
+        <div class="hero-content">
+          <h1 class="hero-title">Java<span>4U</span></h1>
+          <p class="hero-tag" id="hero-tag">Your adventure starts here!</p>
+          <div class="hero-swoosh"></div>
+          <button id="launch" class="launch"><span class="tri"></span><span id="launch-text">Launch Game</span></button>
+          <div id="progress" class="hero-progress hidden">
+            <div class="bar"><div class="fill" id="progress-fill"></div></div>
+            <span id="progress-text"></span>
+          </div>
+        </div>
+        <div class="hero-script">Play. Explore. Enjoy.</div>
+        <a class="hero-news-link hidden" id="hero-news-link" target="_blank" rel="noopener noreferrer"></a>
+        <div class="hero-dots" id="hero-dots"></div>
+        <button class="hero-arrow left" id="hero-prev" aria-label="Previous">&#10094;</button>
+        <button class="hero-arrow right" id="hero-next" aria-label="Next">&#10095;</button>
+      </div>
+
+      <div class="quick">
+        <label class="qcard">
+          <div class="qicon" data-pixel="grass"></div>
+          <div class="qtext"><div class="qlabel">Selected Version</div><div class="qvalue" id="q-version">-</div></div>
+          <span class="chev">&#9662;</span>
+          <select id="sel-instance" aria-label="Selected version"></select>
+        </label>
+        <label class="qcard">
+          <div class="qicon" data-pixel="goose-head"></div>
+          <div class="qtext"><div class="qlabel">Profile</div><div class="qvalue" id="q-profile">-</div></div>
+          <span class="chev">&#9662;</span>
+          <select id="sel-profile" aria-label="Performance profile"></select>
+        </label>
+        <label class="qcard">
+          <div class="qicon" data-pixel="chip"></div>
+          <div class="qtext"><div class="qlabel">RAM Allocation</div><div class="qvalue" id="q-ram">-</div></div>
+          <span class="chev">&#9662;</span>
+          <select id="sel-ram" aria-label="RAM allocation"></select>
+        </label>
+        <button class="qcard more" id="more-options"><span class="sliders"></span>More Options</button>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-head"><span class="phicon" data-icon="mods"></span><h2>Mods</h2><a class="view-all" data-goto="mods">View All &rarr;</a></div>
+          <div class="mod-grid" id="home-mods"><p class="muted">Loading mods...</p></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="phicon" data-icon="modpacks"></span><h2>Modpacks</h2><a class="view-all" data-goto="modpacks">View All &rarr;</a></div>
+          <div class="pack-list" id="home-packs"><p class="muted">Loading modpacks...</p></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="phicon" data-icon="news"></span><h2>Latest News</h2><a class="view-all" id="news-all" href="https://www.minecraft.net/articles" target="_blank" rel="noopener noreferrer">View All &rarr;</a></div>
+          <div class="news-list" id="home-news"><p class="muted">Loading news...</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ Versions -->
+    <section id="page-versions" class="page hidden">
+      <div class="card">
+        <h2>Versions</h2>
+        <p class="muted">Each version is its own instance with separate worlds, mods and settings.</p>
+        <div class="row">
+          <input type="text" id="new-name" placeholder="Name, e.g. Survival" maxlength="64">
+          <select id="new-version"></select>
+          <label class="check"><input type="checkbox" id="show-snapshots"> Snapshots</label>
+          <button id="create" class="btn primary">Create</button>
+        </div>
+      </div>
+      <div class="split">
+        <div class="card list-card"><ul id="instance-list" class="list"></ul></div>
+        <div class="card grow" id="editor">
+          <p id="editor-empty" class="muted">Select a version to edit it.</p>
+          <div id="editor-form" class="hidden">
+            <h2 id="editor-title"></h2>
+            <div class="field">
+              <label for="memory">Memory</label>
+              <div class="row"><input type="range" id="memory" min="1024" step="256"><output id="memory-out"></output>
+                <button id="memory-auto" class="btn" title="Pick a size that suits this PC">Auto</button></div>
+            </div>
+            <div class="field">
+              <label for="profile">Performance profile</label>
+              <select id="profile"></select>
+              <p id="profile-desc" class="muted"></p>
+            </div>
+            <div class="field">
+              <label for="loader">Mod loader</label>
+              <select id="loader">
+                <option value="">Vanilla (no mods)</option>
+                <option value="chunky">Chunky (runs Fabric mods)</option>
+              </select>
+              <p id="loader-desc" class="muted"></p>
+            </div>
+            <div class="field">
+              <label for="jvm-args">Extra JVM arguments</label>
+              <input type="text" id="jvm-args" class="wide">
+            </div>
+            <div class="field">
+              <label for="java-path">Java override</label>
+              <input type="text" id="java-path" class="wide" placeholder="empty = automatic (recommended)">
+            </div>
+            <div class="row">
+              <button id="save" class="btn primary">Save</button>
+              <button id="delete" class="btn">Delete...</button>
+              <span id="confirm-delete" class="hidden">
+                <span class="danger">This deletes worlds and mods too.</span>
+                <button id="delete-yes" class="btn danger-btn">Yes, delete</button>
+                <button id="delete-no" class="btn">Cancel</button>
+              </span>
+            </div>
+            <hr>
+            <div class="row"><h2>Mods</h2><span class="spacer"></span><button class="btn" data-goto="mods">Browse mods</button></div>
+            <ul id="installed-list" class="list installed"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ Mods / Modpacks -->
+    <section id="page-mods" class="page hidden">
+      <div class="card">
+        <h2>Mods</h2>
+        <p class="muted">Fabric mods from Modrinth, run by <strong>Chunky</strong>, Java4U's own mod loader.
+          Installing into <strong id="mods-target">-</strong>; anything a mod needs is installed with it.</p>
+        <div class="row"><input type="search" id="mods-q" class="wide" placeholder="Search mods..."></div>
+      </div>
+      <div class="browse-grid" id="mods-results"></div>
+    </section>
+
+    <section id="page-modpacks" class="page hidden">
+      <div class="card">
+        <h2>Modpacks</h2>
+        <p class="muted">Popular modpacks from Modrinth. One-click installing is coming; for now, "View" opens the pack on Modrinth.</p>
+        <div class="row"><input type="search" id="packs-q" class="wide" placeholder="Search modpacks..."></div>
+      </div>
+      <div class="browse-grid" id="packs-results"></div>
+    </section>
+
+    <!-- ============================================================ Account -->
+    <section id="page-account" class="page hidden">
+      <div class="card">
+        <h2>Microsoft accounts</h2>
+        <ul id="account-list" class="list accounts"></ul>
+        <button id="login" class="btn primary big">Sign in with Microsoft</button>
+        <div id="device-code" class="code-box hidden">
+          <p>1. Copy this code:</p>
+          <div class="row"><span id="device-user-code" class="code"></span><button id="copy-code" class="btn">Copy code</button></div>
+          <p>2. Open <a id="device-uri" target="_blank" rel="noopener noreferrer"></a> and paste it in.</p>
+          <p class="muted">Waiting for you to finish...</p>
+        </div>
+        <details class="advanced">
+          <summary>Advanced: use a different Azure app</summary>
+          <div class="row"><input type="text" id="client-id" class="wide" placeholder="Azure client ID (leave empty to use Java4U's app)"></div>
+        </details>
+      </div>
+    </section>
+
+    <!-- ============================================================ Settings -->
+    <section id="page-settings" class="page hidden">
+      <div class="card">
+        <h2>Home banner</h2>
+        <p class="muted">Use your own picture behind the Launch button. Choose an image or drop one onto this window.</p>
+        <div class="row">
+          <label class="btn primary" for="wallpaper-file">Choose image...</label>
+          <input type="file" id="wallpaper-file" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp,image/*" class="hidden">
+          <button id="no-wallpaper" class="btn">Use the default scene</button>
+        </div>
+        <div class="field">
+          <label for="dim-slider">Darkening</label>
+          <input type="range" id="dim-slider" min="0" max="0.9" step="0.01">
+        </div>
+        <ul id="wallpaper-list" class="list wallpapers"></ul>
+      </div>
+      <div class="card">
+        <h2>Offline mode</h2>
+        <p class="muted">For testing only. Offline mode can't join online servers.</p>
+        <div class="row">
+          <label class="check"><input type="checkbox" id="play-offline"> Play offline as</label>
+          <input type="text" id="offline-name" maxlength="16" placeholder="username">
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ About -->
+    <section id="page-about" class="page hidden">
+      <div class="card about">
+        <div class="about-art" data-pixel="goose-on-block"></div>
+        <div>
+          <h2>Java4U <span class="muted" id="about-version"></span></h2>
+          <p>A free, open-source Minecraft: Java Edition launcher written in Go.</p>
+          <p class="muted">Data folder: <code id="about-dir"></code></p>
+          <p><a href="https://github.com/adamirshad/Java4u" target="_blank" rel="noopener noreferrer">Source code on GitHub</a></p>
+          <p class="muted">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
+            Mods and modpacks come from Modrinth; news comes from Mojang.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ============================================================ log drawer + status bar -->
+<div class="drawer hidden" id="drawer">
+  <div class="drawer-head"><strong>Game log</strong><span class="spacer"></span><button class="icon-btn" id="drawer-close">&#x2715;</button></div>
+  <pre id="log"></pre>
+</div>
+<footer class="statusbar">
+  <span class="status-ok" id="status-icon">&#10003;</span>
+  <span id="status">Launcher ready!</span>
+  <span class="spacer"></span>
+  <button class="link-btn" id="toggle-log">Game log</button>
+  <span class="sep"></span>
+  <span class="globe">&#127760;</span> Minecraft Java Edition
+  <span class="sep"></span>
+  <span id="footer-version">Java4U</span>
+</footer>
+<div id="drop" class="hidden">Drop an image to use it as your banner</div>
+</body>
+</html>

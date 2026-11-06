@@ -1,0 +1,4 @@
+# Built by `go run ./tools/buildchunky`; CI builds it fresh.
+/internal/chunky/dist/chunky.jar
+/chunky/build/
+/dist/
