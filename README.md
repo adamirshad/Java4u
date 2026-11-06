@@ -1,44 +1,50 @@
-# Java4u
+# Java4U
 
-Java4u is an unofficial, open-source Minecraft Java launcher for Windows. It manages isolated game profiles. Chunky is its planned independent mod loader, with Fabric mod compatibility as a long-term goal. This project is not affiliated with Mojang or Microsoft.
+Java4U is a free, open-source Minecraft: Java Edition launcher for Windows, macOS and Linux,
+with a goose for a mascot. It has its own mod loader, **Chunky**, which runs Fabric mods.
+This project is not affiliated with Mojang or Microsoft.
 
-## Current status
+## What it does
 
-- The WPF desktop app targets .NET 10 and has no third-party package dependencies.
-- Create, select, edit, and remove profiles with a Minecraft version, loader choice, and memory limit.
-- Each profile gets its own folder under %LOCALAPPDATA%\Java4u\instances\. The profile list is stored in %LOCALAPPDATA%\Java4u\instances.json.
-- Removing a profile leaves its folder intact.
-- The browser preview is a separate layout concept and does not connect to the desktop app.
-- Minecraft downloads, Microsoft sign-in, Java runtime management, game launching, and the Chunky runtime are not implemented yet.
+- **Play:** Microsoft sign-in, downloads verified against Mojang's hashes, the right Java
+  runtime fetched automatically, and separate versions (instances) with their own worlds,
+  memory and performance settings.
+- **Mods:** one-click installs from Modrinth, including their dependencies. Mods run on Chunky,
+  Java4U's lightweight loader for Minecraft 26.1 and newer, which runs Fabric mods unchanged
+  with no remapping.
+- **Modpacks:** install a Modrinth pack as a new ready-to-play version. Turn whole packs or
+  single mods on and off.
+- **Servers:** run a dedicated server on your PC, with a console, commands and server mods.
+- **Desktop app and CLI:** a green, Minecraft-styled app (`java4u-gui`) and a command-line tool
+  (`java4u`).
 
-## Run the Windows app
+## Where things are
 
-Requires .NET 10 on Windows. From the repository root:
+- [`java4u-go/`](java4u-go): the launcher, written in Go, including the desktop app and CLI.
+  See its [README](java4u-go/README.md) for building and usage.
+- [`java4u-go/chunky/`](java4u-go/chunky): Chunky, the mod loader, written in Java. See its
+  [README](java4u-go/chunky/README.md).
+- [`archive/`](archive): earlier C# and Rust versions, kept for reference.
 
-```powershell
-dotnet run --project desktop/Java4u.csproj
-```
+## Get it
 
-## Chunky and Fabric compatibility
+Every push to `main` builds Windows, macOS and Linux executables. Download them from the
+latest run of the **Java4U** workflow on the Actions tab (under **Artifacts**). Then run
+`java4u-gui`.
 
-Chunky is intended to be its own loader, separate from Fabric. Compatibility with Fabric mods must be implemented in stages, including Fabric mod metadata, dependencies, entrypoints, nested jars, mappings, Mixin behavior, access wideners, and Fabric API support where required. Some mods may remain incompatible; Java4u should identify missing requirements before launch.
+To build it yourself, you need Go 1.25+ and a JDK 21+. From `java4u-go`:
+
+    go run ./tools/buildchunky
+    go build ./cmd/java4u-gui
 
 ## Project principles
 
-- Keep Java4u and Chunky as separate components.
-- Never bundle Minecraft game files. Retrieve game files from official sources and verify them.
+- Keep Java4U and Chunky as separate components.
+- Never bundle Minecraft game files. Download them from official sources and verify them.
 - Require a legitimate Minecraft license for online play.
-- Use Microsoft's sign-in flow; never collect a player's Microsoft password.
-- Keep network work on demand, cache verified metadata, bound download concurrency, and launch the game JVM directly.
+- Use Microsoft's sign-in flow and never collect a player's Microsoft password.
+- Players accept Minecraft's EULA themselves; Java4U never accepts it for them.
+- Keep network work on demand, verify every download, limit concurrent downloads, and launch
+  the game JVM directly.
 
-## Build roadmap
-
-1. Instance library, local profile storage, isolated folders, and memory settings.
-2. Official version selection and editable per-instance settings.
-3. Verified game file downloads with resumable transfers.
-4. Microsoft sign-in, entitlement checks, refresh, and secure token storage.
-5. Java runtime selection and JVM argument generation.
-6. Chunky loader specification and a native-mod MVP.
-7. Incremental Fabric compatibility and compatibility reporting.
-
-See CONTRIBUTING.md for contribution and build guidance. The repository uses the GPL-3.0 license.
+The repository uses the GPL-3.0 license.
