@@ -167,6 +167,25 @@ func SetModEnabled(modsDir, file string, enabled bool) error {
 	return os.Rename(on, off)
 }
 
+// SetAllModsEnabled turns every mod in a folder on or off (used to switch a whole modpack).
+func SetAllModsEnabled(modsDir string, enabled bool) (int, error) {
+	mods, err := ListMods(modsDir)
+	if err != nil {
+		return 0, err
+	}
+	changed := 0
+	for _, m := range mods {
+		if m.Enabled == enabled {
+			continue
+		}
+		if err := SetModEnabled(modsDir, m.File, enabled); err != nil {
+			return changed, err
+		}
+		changed++
+	}
+	return changed, nil
+}
+
 // RemoveMod deletes a mod (enabled or disabled) and forgets where it came from.
 func RemoveMod(modsDir, file string) error {
 	if !validModFile(file) {

@@ -115,6 +115,59 @@ func (s *Server) handleToggleMod(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]bool{"ok": true})
 }
 
+// handleInstalled summarizes every version's mods, so the app can show installed modpacks
+// and mods in one place.
+func (s *Server) handleInstalled(w http.ResponseWriter, r *http.Request) {
+	type entry struct {
+		Instance string `json:"instance"`
+		Version  string `json:"version"`
+		Loader   string `json:"loader"`
+		Modpack  string `json:"modpack"`
+		Mods     int    `json:"mods"`
+		Enabled  int    `json:"enabled"`
+	}
+	out := []entry{}
+	insts, _ := core.ListInstances(s.dirs)
+	for _, inst := range insts {
+		mods, _ := core.ListMods(inst.ModsDir(s.dirs))
+		on := 0
+		for _, m := range mods {
+			if m.Enabled {
+				on++
+			}
+		}
+		out = append(out, entry{inst.Name, inst.Version, inst.Loader, inst.Modpack, len(mods), on})
+	}
+	writeJSON(w, out)
+}
+
+// handleToggleAll turns every mod in a version on or off (a whole modpack, for example).
+func (s *Server) handleToggleAll(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Instance string `json:"instance"`
+		Enabled  bool   `json:"enabled"`
+	}
+	if !readJSON(w, r, &req) {
+		return
+	}
+	inst, err := core.LoadInstance(s.dirs, req.Instance)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	n, err := core.SetAllModsEnabled(inst.ModsDir(s.dirs), req.Enabled)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	state := "off"
+	if req.Enabled {
+		state = "on"
+	}
+	s.setStatus(fmt.Sprintf("Turned %d mod(s) %s in %s.", n, state, inst.Name))
+	writeJSON(w, map[string]int{"changed": n})
+}
+
 func (s *Server) handleRemoveMod(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Instance string `json:"instance"`

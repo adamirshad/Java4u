@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js" defer></script>
 <script src="/servers.js" defer></script>
+<script src="/installed.js" defer></script>
 </head>
 <body>
 
@@ -174,12 +175,41 @@
     <!-- ============================================================ Mods / Modpacks -->
     <section id="page-mods" class="page hidden">
       <div class="card">
-        <h2>Mods</h2>
-        <p class="muted">Fabric mods from Modrinth, run by <strong>Chunky</strong>, Java4U's own mod loader.
-          Installing into <strong id="mods-target">-</strong>; anything a mod needs is installed with it.</p>
-        <div class="row"><input type="search" id="mods-q" class="wide" placeholder="Search mods..."></div>
+        <div class="row"><h2>Mods</h2><span class="spacer"></span>
+          <div class="seg" role="tablist">
+            <button class="seg-btn on" id="mods-tab-browse" role="tab">Browse</button>
+            <button class="seg-btn" id="mods-tab-installed" role="tab">Installed</button>
+          </div>
+        </div>
+        <div id="mods-browse-head">
+          <p class="muted">Fabric mods from Modrinth, run by <strong>Chunky</strong>, Java4U's own mod loader.
+            Installing into <strong id="mods-target">-</strong>; anything a mod needs is installed with it.</p>
+          <div class="row"><input type="search" id="mods-q" class="wide" placeholder="Search mods..."></div>
+        </div>
       </div>
       <div class="browse-grid" id="mods-results"></div>
+
+      <div id="mods-installed" class="hidden">
+        <div class="card">
+          <h2>Installed modpacks</h2>
+          <p class="muted">Turning a pack off turns off all of its mods, so it plays like plain Minecraft until you turn it back on.</p>
+          <div id="pack-list" class="pack-rows"></div>
+        </div>
+        <div class="card">
+          <div class="row">
+            <h2>Installed mods</h2><span class="spacer"></span>
+            <label for="inst-pick" class="muted">in</label>
+            <select id="inst-pick"></select>
+          </div>
+          <div class="row">
+            <input type="search" id="inst-filter" class="wide" placeholder="Filter installed mods...">
+            <button id="inst-all-on" class="btn">Turn all on</button>
+            <button id="inst-all-off" class="btn">Turn all off</button>
+          </div>
+          <p id="inst-summary" class="muted"></p>
+          <ul id="inst-mods" class="list installed"></ul>
+        </div>
+      </div>
     </section>
 
     <section id="page-modpacks" class="page hidden">

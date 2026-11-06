@@ -72,6 +72,29 @@ func TestModsFolder(t *testing.T) {
 	}
 }
 
+func TestSetAllModsEnabled(t *testing.T) {
+	dir := t.TempDir()
+	for _, n := range []string{"a.jar", "b.jar", "c.jar"} {
+		writeModJar(t, filepath.Join(dir, n), "")
+	}
+	SetModEnabled(dir, "b.jar", false)
+	if n, err := SetAllModsEnabled(dir, false); err != nil || n != 2 {
+		t.Fatalf("off: %d %v", n, err)
+	}
+	mods, _ := ListMods(dir)
+	for _, m := range mods {
+		if m.Enabled {
+			t.Fatalf("%s still on", m.File)
+		}
+	}
+	if n, err := SetAllModsEnabled(dir, true); err != nil || n != 3 {
+		t.Fatalf("on: %d %v", n, err)
+	}
+	if n, _ := SetAllModsEnabled(t.TempDir(), true); n != 0 {
+		t.Fatal("empty folder")
+	}
+}
+
 func TestModIndex(t *testing.T) {
 	dir := t.TempDir()
 	idx := loadIndex(dir)
