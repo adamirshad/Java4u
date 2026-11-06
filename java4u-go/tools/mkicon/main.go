@@ -1,5 +1,6 @@
 // Command mkicon draws Java4U's app icon (the pixel goose from the web UI) as
-// build/java4u.ico (16-256 px, for Windows) and build/java4u-256.png.
+// build/java4u.ico (16-256 px, for Windows), build/java4u-256.png and
+// build/java4u.iconset (16-1024 px, for the macOS app).
 //
 //	go run ./tools/mkicon
 package main
@@ -71,7 +72,26 @@ func main() {
 	if err := os.WriteFile(filepath.Join("build", "java4u-256.png"), pngs[len(pngs)-1], 0o644); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("wrote build/java4u.ico and build/java4u-256.png")
+
+	// macOS: an .iconset folder, which `iconutil -c icns` turns into java4u.icns.
+	set := filepath.Join("build", "java4u.iconset")
+	os.MkdirAll(set, 0o755)
+	for _, s := range []int{16, 32, 128, 256, 512} {
+		for _, scale := range []int{1, 2} {
+			name := fmt.Sprintf("icon_%dx%d.png", s, s)
+			if scale == 2 {
+				name = fmt.Sprintf("icon_%dx%d@2x.png", s, s)
+			}
+			var buf bytes.Buffer
+			if err := png.Encode(&buf, render(s*scale, grid)); err != nil {
+				log.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(set, name), buf.Bytes(), 0o644); err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+	fmt.Println("wrote build/java4u.ico, build/java4u-256.png and build/java4u.iconset")
 }
 
 // render draws the icon at size px, sampling 4x4 points per pixel for smooth tile corners.

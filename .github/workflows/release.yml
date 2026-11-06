@@ -96,8 +96,27 @@ jobs:
           name: release-installers
           path: java4u-go/dist/java4u-setup-*.exe
 
+  dmg:
+    needs: build
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: java4u-go
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-build
+          path: java4u-go
+      - name: Build the macOS app and disk image
+        run: sh packaging/macos/build-dmg.sh "${GITHUB_REF_NAME#v}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-dmg
+          path: java4u-go/dist/java4u-macos.dmg
+
   publish:
-    needs: [ build, installer ]
+    needs: [ build, installer, dmg ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -108,12 +127,16 @@ jobs:
         with:
           name: release-installers
           path: files
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-dmg
+          path: files
       - name: Collect files and checksums
         run: |
           set -e
           cp build/dist/*.zip files/
           cd files
-          sha256sum *.zip *.exe > checksums.txt
+          sha256sum *.zip *.exe *.dmg > checksums.txt
           cat checksums.txt
       - name: Publish the release
         env:
@@ -124,4 +147,4 @@ jobs:
           case "$GITHUB_REF_NAME" in *-*) pre="--prerelease";; esac
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
             --title "Java4U ${GITHUB_REF_NAME#v}" --generate-notes $pre \
-            files/*.zip files/*.exe files/checksums.txt
+            files/*.zip files/*.exe files/*.dmg files/checksums.txt

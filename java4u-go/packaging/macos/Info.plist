@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>Java4U</string>
+  <key>CFBundleDisplayName</key>
+  <string>Java4U</string>
+  <key>CFBundleIdentifier</key>
+  <string>io.github.adamirshad.java4u</string>
+  <key>CFBundleExecutable</key>
+  <string>java4u-gui</string>
+  <key>CFBundleIconFile</key>
+  <string>java4u</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>@VERSION@</string>
+  <key>CFBundleVersion</key>
+  <string>@VERSION@</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>11.0</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.games</string>
+  <!-- Java4U's window is a browser app window, so the launcher itself needs no Dock icon. -->
+  <key>LSUIElement</key>
+  <true/>
+  <key>NSHumanReadableCopyright</key>
+  <string>Java4U contributors. Not affiliated with Mojang or Microsoft.</string>
+</dict>
+</plist>
