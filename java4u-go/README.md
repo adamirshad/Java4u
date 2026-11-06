@@ -21,6 +21,11 @@ Download the newest release from https://github.com/adamirshad/Java4u/releases:
 - **Windows:** `java4u-setup-windows-amd64.exe` (or `-arm64`). It installs for your user only,
   with no admin prompt, into `%LOCALAPPDATA%\Programs\Java4U`, and adds a Start menu shortcut and
   an uninstaller. Uninstalling keeps your data folder (worlds, mods, accounts).
+- **macOS:** `java4u-macos.dmg`. Open it and drag **Java4U** into Applications. One app runs on
+  both Intel and Apple Silicon Macs (macOS 11 or newer). The app isn't notarised yet, so the
+  first time, right-click it and choose **Open** (on macOS 15, open it once, then press
+  **Open Anyway** in System Settings > Privacy & Security). The command-line tool is inside the
+  app at `Java4U.app/Contents/MacOS/java4u`.
 - **Any system:** `java4u-<os>-<arch>.zip` holds `java4u-gui` and `java4u`. Unzip and run.
 - `checksums.txt` lists the SHA-256 of every file.
 
@@ -47,13 +52,15 @@ build Chunky. Then run this from this folder:
 
 Push a version tag. The **Release** workflow builds every platform, puts the icon and version
 details into the Windows programs, builds the installers with Inno Setup
-(`packaging/windows/java4u.iss`), writes `checksums.txt`, and publishes a GitHub Release:
+(`packaging/windows/java4u.iss`) and the macOS disk image (`packaging/macos/build-dmg.sh`),
+writes `checksums.txt`, and publishes a GitHub Release:
 
     git tag v0.2.0
     git push origin v0.2.0
 
 A tag with a dash (`v0.2.0-rc.1`) is published as a pre-release, which the updater ignores. The
-installers are not code-signed yet, so Windows SmartScreen warns on first run.
+installers are not code-signed yet: Windows SmartScreen warns on first run, and the Mac app is
+only ad-hoc signed (not notarised), so macOS asks before the first launch.
 
 ## Desktop app
 

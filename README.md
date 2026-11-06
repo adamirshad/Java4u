@@ -29,7 +29,8 @@ This project is not affiliated with Mojang or Microsoft.
 ## Get it
 
 Download the newest version from [Releases](https://github.com/adamirshad/Java4u/releases).
-On Windows, run `java4u-setup-windows-amd64.exe`. On other systems, unzip
+On Windows, run `java4u-setup-windows-amd64.exe`. On a Mac, open `java4u-macos.dmg` and drag
+Java4U into Applications. On Linux, unzip
 `java4u-<os>-<arch>.zip` and run `java4u-gui`. Java4U tells you when a new version is out and
 can update itself.
 
