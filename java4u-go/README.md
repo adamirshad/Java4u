@@ -75,6 +75,36 @@ remove them. From the command line:
     java4u mods disable main sodium-fabric-0.9.2+mc26.3.jar
     java4u instance set main --loader vanilla   # back to plain Minecraft (mods stay on disk)
 
+## Modpacks
+
+Open **Modpacks** in the app and press **Install** on any pack. The list shows Fabric packs that
+have a build for a version Chunky runs. Java4U does the rest:
+
+- Downloads the pack and creates a new version named after it, set to Chunky.
+- Fetches every file the pack lists. Each download is checked against its SHA-1 and must come
+  from Modrinth, GitHub or GitLab.
+- Copies in the pack's configs. Paths that would escape the version's folder are refused.
+
+If anything fails, the half-installed version is removed. From the command line:
+
+    java4u modpack install fabulously-optimized
+
+## Servers
+
+The **Servers** page runs your own dedicated server on this PC, with mods through Chunky:
+
+- Create a server and tick the box to agree to Minecraft's EULA (Java4U never agrees for you).
+- Press **Start server**, follow the console, and type commands such as `op YourName`.
+- Search for mods and install them. Client-only mods such as Sodium are refused, and
+  client-only parts of other mods are skipped.
+- The page shows the address friends use: `localhost` on this PC, or your home-network IP.
+
+From the command line:
+
+    java4u server create friends 26.3
+    java4u server mods install friends fabric-api
+    java4u server run friends --accept-eula   # only if you agree to https://aka.ms/MinecraftEULA
+
 Data lives in `%APPDATA%\Java4U`, `~/Library/Application Support/Java4U` or `~/.local/share/java4u`.
 Override it with `--data-dir` or `JAVA4U_HOME`. Java4U uses the same file formats as the Rust
 java4u launcher, so you can copy a java4u data folder (instances, accounts, settings) into
@@ -127,8 +157,10 @@ Done:
 - Microsoft sign-in (device code, Xbox, XSTS, Minecraft services) with token refresh.
 - Automatic Java runtime download and JVM profiles.
 - Desktop app with wallpapers.
-- Chunky mod loader, running Fabric mods on 26.x. Tested with Fabric API, Sodium and Mod Menu.
-- One-click mod installs from Modrinth, with dependencies.
+- Chunky mod loader, running Fabric mods on 26.x clients and dedicated servers. Tested with
+  Fabric API, Sodium, Mod Menu and the 47-mod Fabulously Optimized pack (143 mods counting
+  nested ones).
+- One-click mod and modpack installs from Modrinth, with dependencies.
+- Dedicated servers with a console, commands and server mods.
 
-Next: Chunky on dedicated servers, modpack (.mrpack) installs, and remapping so Chunky can
-support versions before 26.1.
+Next: remapping so Chunky can support versions before 26.1, and modpack updates.

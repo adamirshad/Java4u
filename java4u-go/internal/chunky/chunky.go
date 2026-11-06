@@ -16,9 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/adamirshad/Java4u/java4u-go/internal/core"
 )
@@ -68,12 +66,7 @@ var ErrNotBuilt = errors.New("this build of Java4U doesn't include Chunky; build
 // SupportsVersion reports whether Chunky can run a Minecraft version. Chunky needs the
 // unobfuscated releases that started with 26.1, so it never has to remap names.
 func SupportsVersion(id string) bool {
-	end := strings.IndexFunc(id, func(r rune) bool { return !unicode.IsDigit(r) })
-	if end <= 0 {
-		return false
-	}
-	major, err := strconv.Atoi(id[:end])
-	return err == nil && major >= 26 && major < 1000
+	return core.ChunkySupports(id)
 }
 
 // Prepare installs Chunky and its libraries and returns what core needs to launch with it.

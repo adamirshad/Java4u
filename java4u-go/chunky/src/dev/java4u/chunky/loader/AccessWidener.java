@@ -53,7 +53,7 @@ public final class AccessWidener {
 			String[] t = line.split("\\s+");
 			if (!header) {
 				boolean widener = t.length >= 3 && t[0].equals("accessWidener") && (t[1].equals("v1") || t[1].equals("v2"));
-				boolean tweaker = t.length >= 3 && t[0].equals("classTweaker") && t[1].equals("v1");
+				boolean tweaker = t.length >= 3 && t[0].equals("classTweaker") && (t[1].equals("v1") || t[1].equals("v2"));
 				if (!widener && !tweaker) {
 					throw new IllegalArgumentException(source + ": not an access widener or class tweaker file");
 				}
@@ -76,7 +76,10 @@ public final class AccessWidener {
 			case "accessible": flag = ACCESSIBLE; break;
 			case "extendable": flag = EXTENDABLE; break;
 			case "mutable": flag = MUTABLE; break;
-			default: throw new IllegalArgumentException(source + " line " + (n + 1) + ": unknown access '" + t[0] + "'");
+			default:
+				// A newer format may add entry kinds; skip them rather than refuse to start.
+				dev.java4u.chunky.Log.warn(source + " line " + (n + 1) + ": skipping unknown entry '" + t[0] + "'");
+				continue;
 			}
 			if (t.length < 3) throw new IllegalArgumentException(source + " line " + (n + 1) + ": too few parts");
 			String owner = t[2];

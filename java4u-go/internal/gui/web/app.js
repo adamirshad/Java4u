@@ -202,6 +202,7 @@ const ICONS = {
   mods: "M10 3a2 2 0 0 1 4 0v2h4a1 1 0 0 1 1 1v4h-2a2 2 0 0 0 0 4h2v4a1 1 0 0 1-1 1h-4v-2a2 2 0 0 0-4 0v2H6a1 1 0 0 1-1-1v-4H3a2 2 0 0 1 0-4h2V6a1 1 0 0 1 1-1h4z",
   modpacks: "M12 2 2 7l10 5 10-5zM4 10.5 2 11.5l10 5 10-5-2-1-8 4zm0 4L2 15.5l10 5 10-5-2-1-8 4z",
   account: "M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6z",
+  servers: "M3 3h18v7H3zm0 11h18v7H3zM6 5.5v2h2v-2zm0 11v2h2v-2zm4-11v2h8v-2zm0 11v2h8v-2z",
   settings: "M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.5 7.5 0 0 0-1.7-1L14 3h-4l-.4 2.9a7.5 7.5 0 0 0-1.7 1l-2.5-1-2 3.5L4.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.5 7.5 0 0 0 1.7 1L10 21h4l.4-2.9a7.5 7.5 0 0 0 1.7-1l2.5 1 2-3.5zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z",
   about: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z",
   news: "M4 2h12l4 4v16H4zm3 7v2h10V9zm0 4v2h10v-2zm0 4v2h7v-2zM7 5v2h6V5z",
@@ -401,6 +402,7 @@ function renderLaunch() {
   btn.disabled = !!st.busy;
   $("launch-text").textContent =
     st.running ? "Playing..." :
+    st.busy && st.task === "modpack" ? "Installing modpack..." :
     st.busy ? "Preparing..." :
     mode === "noinstance" ? "Add a Version" :
     mode === "noaccount" ? "Sign In to Play" : "Launch Game";
@@ -617,7 +619,7 @@ async function loadHomePacks() {
       el("div", { class: "pack-body" },
         el("div", { class: "pack-title", textContent: p.title }),
         el("div", { class: "pack-desc", textContent: p.description }),
-        viewButton(p.url)))));
+        packControls(p)))));
   } catch {
     $("home-packs").replaceChildren(el("p", { class: "muted", textContent: "Modrinth is unavailable right now." }));
   }
@@ -643,7 +645,7 @@ async function searchBrowse(type) {
         el("div", { class: "meta" },
           el("span", { textContent: `by ${m.author}` }),
           el("span", { textContent: `${compact(m.downloads)} downloads` }),
-          type === "mod" ? installControls(m) : viewButton(m.url))))));
+          type === "mod" ? installControls(m) : packControls(m))))));
   } catch (e) {
     box.replaceChildren(el("p", { class: "muted", textContent: e.message }));
   }
@@ -885,7 +887,8 @@ async function poll() {
   try {
     const st = await api(`/api/state?epoch=${logEpoch}&since=${logNext}`);
     const loginFinished = lastState.logging_in && !st.logging_in;
-    const launchFinished = lastState.busy && !st.busy;
+    const packFinished = lastState.busy && !st.busy && lastState.task === "modpack";
+    const launchFinished = lastState.busy && !st.busy && !packFinished;
     lastState = st;
     appendLog(st.log, st.log_reset);
     logEpoch = st.log_epoch;
@@ -917,6 +920,12 @@ async function poll() {
     }
 
     if (loginFinished) await refresh();
+    if (packFinished) {
+      // Select the new pack's version and show it on Home, ready to play.
+      await refresh();
+      if (data.instances.some((i) => i.name === data.settings.last_instance)) selectInstance(data.settings.last_instance);
+      go("home");
+    }
     if (st.busy || st.logging_in) next = 400;
     if (data && data.versions.length === 0 && !data.versions_error) await refresh();
   } catch (e) {

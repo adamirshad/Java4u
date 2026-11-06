@@ -40,10 +40,12 @@ public final class ChunkyLoader implements FabricLoader {
 		return l;
 	}
 
-	static ChunkyLoader init(List<ChunkyMod> mods, Path gameDir, String gameVersion, String[] args, ChunkyClassLoader cl) {
-		instance = new ChunkyLoader(mods, gameDir, gameVersion, args, cl);
+	static ChunkyLoader init(List<ChunkyMod> mods, Path gameDir, String gameVersion, String[] args, ChunkyClassLoader cl, EnvType env) {
+		instance = new ChunkyLoader(mods, gameDir, gameVersion, args, cl, env);
 		return instance;
 	}
+
+	private final EnvType env;
 
 	private final List<ChunkyMod> mods;
 	private final Map<String, ChunkyMod> byId = new LinkedHashMap<>();
@@ -56,7 +58,8 @@ public final class ChunkyLoader implements FabricLoader {
 	private final Map<String, LanguageAdapter> adapters = new ConcurrentHashMap<>();
 	private final Share share = new Share();
 
-	private ChunkyLoader(List<ChunkyMod> mods, Path gameDir, String gameVersion, String[] args, ChunkyClassLoader cl) {
+	private ChunkyLoader(List<ChunkyMod> mods, Path gameDir, String gameVersion, String[] args, ChunkyClassLoader cl, EnvType env) {
+		this.env = env;
 		this.mods = Collections.unmodifiableList(new ArrayList<>(mods));
 		this.gameDir = gameDir;
 		this.gameVersion = gameVersion;
@@ -218,7 +221,7 @@ public final class ChunkyLoader implements FabricLoader {
 
 	@Override
 	public EnvType getEnvironmentType() {
-		return EnvType.CLIENT;
+		return env;
 	}
 
 	@Override

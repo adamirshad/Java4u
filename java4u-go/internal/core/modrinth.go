@@ -20,11 +20,12 @@ const modrinthAPI = "https://api.modrinth.com/v2"
 var projectRef = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 type mrVersion struct {
-	ID            string `json:"id"`
-	ProjectID     string `json:"project_id"`
-	Name          string `json:"name"`
-	VersionNumber string `json:"version_number"`
-	VersionType   string `json:"version_type"`
+	ID            string   `json:"id"`
+	ProjectID     string   `json:"project_id"`
+	Name          string   `json:"name"`
+	VersionNumber string   `json:"version_number"`
+	VersionType   string   `json:"version_type"`
+	GameVersions  []string `json:"game_versions"`
 	Dependencies  []struct {
 		VersionID      string `json:"version_id"`
 		ProjectID      string `json:"project_id"`
@@ -47,9 +48,17 @@ type InstalledFile struct {
 	Reason    string `json:"reason"` // "requested" or "dependency"
 }
 
+// Sides a mod can be installed for.
+const (
+	SideClient = "client"
+	SideServer = "server"
+)
+
 // InstallMod installs the newest Fabric build of a Modrinth project (by slug or id) for
-// gameVersion into modsDir, plus every required dependency that isn't there yet.
-func InstallMod(ctx context.Context, c *http.Client, modsDir, project, gameVersion string) ([]InstalledFile, error) {
+// gameVersion into modsDir, plus every required dependency that isn't there yet. side is
+// SideClient or SideServer; mods that don't run on that side are refused (or, for
+// dependencies, skipped).
+func InstallMod(ctx context.Context, c *http.Client, modsDir, project, gameVersion, side string) ([]InstalledFile, error) {
 	if !projectRef.MatchString(project) {
 		return nil, errors.New("invalid Modrinth project")
 	}
@@ -57,7 +66,7 @@ func InstallMod(ctx context.Context, c *http.Client, modsDir, project, gameVersi
 		return nil, err
 	}
 	idx := loadIndex(modsDir)
-	inst := &modInstaller{ctx: ctx, c: c, dir: modsDir, game: gameVersion, idx: idx, seen: map[string]bool{}}
+	inst := &modInstaller{ctx: ctx, c: c, dir: modsDir, game: gameVersion, side: side, idx: idx, seen: map[string]bool{}}
 	err := inst.install(project, "", "requested")
 	if saveErr := idx.save(modsDir); err == nil {
 		err = saveErr
@@ -70,9 +79,30 @@ type modInstaller struct {
 	c    *http.Client
 	dir  string
 	game string
+	side string
 	idx  *modIndex
 	seen map[string]bool
 	done []InstalledFile
+}
+
+// runsOnSide asks Modrinth whether a project works on this installer's side.
+func (m *modInstaller) runsOnSide(projectID string) (bool, string, error) {
+	if m.side == "" {
+		return true, "", nil
+	}
+	var p struct {
+		Title      string `json:"title"`
+		ClientSide string `json:"client_side"`
+		ServerSide string `json:"server_side"`
+	}
+	if err := m.get("/project/"+projectID, &p); err != nil {
+		return false, "", err
+	}
+	support := p.ClientSide
+	if m.side == SideServer {
+		support = p.ServerSide
+	}
+	return support != "unsupported", p.Title, nil
 }
 
 func (m *modInstaller) install(project, versionID, reason string) error {
@@ -96,6 +126,19 @@ func (m *modInstaller) install(project, versionID, reason string) error {
 		if _, ok := m.idx.projectFile(v.ProjectID); ok {
 			return nil
 		}
+	}
+	ok, title, err := m.runsOnSide(v.ProjectID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		if reason == "dependency" {
+			return nil // not needed on this side
+		}
+		if m.side == SideServer {
+			return fmt.Errorf("%s only runs on the client, so it can't go on a server", title)
+		}
+		return fmt.Errorf("%s only runs on servers", title)
 	}
 
 	file := v.Files[0]

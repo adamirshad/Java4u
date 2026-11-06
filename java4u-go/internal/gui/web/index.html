@@ -7,6 +7,8 @@
 <link rel="icon" href="/goose.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
 <script src="/app.js" defer></script>
+<script src="/servers.js" defer></script>
+<script src="/installed.js" defer></script>
 </head>
 <body>
 
@@ -41,6 +43,7 @@
     <button class="nav" data-page="versions"><span class="nav-ico" data-icon="versions"></span>Versions</button>
     <button class="nav" data-page="mods"><span class="nav-ico" data-icon="mods"></span>Mods</button>
     <button class="nav" data-page="modpacks"><span class="nav-ico" data-icon="modpacks"></span>Modpacks</button>
+    <button class="nav" data-page="servers"><span class="nav-ico" data-icon="servers"></span>Servers</button>
     <button class="nav" data-page="account"><span class="nav-ico" data-icon="account"></span>Account</button>
     <button class="nav" data-page="settings"><span class="nav-ico" data-icon="settings"></span>Settings</button>
     <button class="nav" data-page="about"><span class="nav-ico" data-icon="about"></span>About</button>
@@ -172,21 +175,102 @@
     <!-- ============================================================ Mods / Modpacks -->
     <section id="page-mods" class="page hidden">
       <div class="card">
-        <h2>Mods</h2>
-        <p class="muted">Fabric mods from Modrinth, run by <strong>Chunky</strong>, Java4U's own mod loader.
-          Installing into <strong id="mods-target">-</strong>; anything a mod needs is installed with it.</p>
-        <div class="row"><input type="search" id="mods-q" class="wide" placeholder="Search mods..."></div>
+        <div class="row"><h2>Mods</h2><span class="spacer"></span>
+          <div class="seg" role="tablist">
+            <button class="seg-btn on" id="mods-tab-browse" role="tab">Browse</button>
+            <button class="seg-btn" id="mods-tab-installed" role="tab">Installed</button>
+          </div>
+        </div>
+        <div id="mods-browse-head">
+          <p class="muted">Fabric mods from Modrinth, run by <strong>Chunky</strong>, Java4U's own mod loader.
+            Installing into <strong id="mods-target">-</strong>; anything a mod needs is installed with it.</p>
+          <div class="row"><input type="search" id="mods-q" class="wide" placeholder="Search mods..."></div>
+        </div>
       </div>
       <div class="browse-grid" id="mods-results"></div>
+
+      <div id="mods-installed" class="hidden">
+        <div class="card">
+          <h2>Installed modpacks</h2>
+          <p class="muted">Turning a pack off turns off all of its mods, so it plays like plain Minecraft until you turn it back on.</p>
+          <div id="pack-list" class="pack-rows"></div>
+        </div>
+        <div class="card">
+          <div class="row">
+            <h2>Installed mods</h2><span class="spacer"></span>
+            <label for="inst-pick" class="muted">in</label>
+            <select id="inst-pick"></select>
+          </div>
+          <div class="row">
+            <input type="search" id="inst-filter" class="wide" placeholder="Filter installed mods...">
+            <button id="inst-all-on" class="btn">Turn all on</button>
+            <button id="inst-all-off" class="btn">Turn all off</button>
+          </div>
+          <p id="inst-summary" class="muted"></p>
+          <ul id="inst-mods" class="list installed"></ul>
+        </div>
+      </div>
     </section>
 
     <section id="page-modpacks" class="page hidden">
       <div class="card">
         <h2>Modpacks</h2>
-        <p class="muted">Popular modpacks from Modrinth. One-click installing is coming; for now, "View" opens the pack on Modrinth.</p>
+        <p class="muted">Fabric modpacks from Modrinth that run on Chunky. Installing one makes a new version with all
+          its mods and settings, ready to play.</p>
         <div class="row"><input type="search" id="packs-q" class="wide" placeholder="Search modpacks..."></div>
       </div>
       <div class="browse-grid" id="packs-results"></div>
+    </section>
+
+    <!-- ============================================================ Servers -->
+    <section id="page-servers" class="page hidden">
+      <div class="card">
+        <h2>Servers</h2>
+        <p class="muted">Run your own Minecraft server on this PC, with mods through Chunky, so friends can play together.</p>
+        <div class="row">
+          <input type="text" id="srv-new-name" placeholder="Name, e.g. Friends" maxlength="64">
+          <select id="srv-new-version"></select>
+          <button id="srv-create" class="btn primary">Create server</button>
+        </div>
+      </div>
+      <div class="split">
+        <div class="card list-card"><ul id="server-list" class="list"></ul></div>
+        <div class="card grow">
+          <p id="srv-empty" class="muted">Create or select a server.</p>
+          <div id="srv-form" class="hidden">
+            <h2 id="srv-title"></h2>
+            <p id="srv-address" class="muted"></p>
+            <div class="row">
+              <label for="srv-memory">Memory</label>
+              <input type="range" id="srv-memory" min="1024" step="256"><output id="srv-memory-out"></output>
+              <select id="srv-loader">
+                <option value="">Vanilla (no mods)</option>
+                <option value="chunky">Chunky (runs Fabric mods)</option>
+              </select>
+              <button id="srv-save" class="btn">Save</button>
+            </div>
+            <label class="check eula"><input type="checkbox" id="srv-eula">
+              I agree to Minecraft's <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener noreferrer">End User License Agreement</a></label>
+            <div class="row">
+              <button id="srv-start" class="btn primary big">Start server</button>
+              <button id="srv-stop" class="btn">Stop</button>
+              <span id="srv-state" class="muted"></span>
+            </div>
+            <pre id="srv-console" class="console"></pre>
+            <div class="row">
+              <input type="text" id="srv-cmd" class="wide" placeholder='Server command, e.g. "say hello" or "op YourName"'>
+              <button id="srv-send" class="btn">Send</button>
+            </div>
+            <hr>
+            <div class="row"><h2>Server mods</h2><span class="spacer"></span>
+              <input type="search" id="srv-mod-q" placeholder="Search mods for this server..."></div>
+            <div id="srv-mod-results" class="browse-grid compact"></div>
+            <ul id="srv-mods" class="list installed"></ul>
+            <hr>
+            <button id="srv-delete" class="btn danger-btn">Delete server...</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ============================================================ Account -->

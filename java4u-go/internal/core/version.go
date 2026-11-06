@@ -43,7 +43,8 @@ type JavaVersion struct {
 }
 
 type Downloads struct {
-	Client Artifact `json:"client"`
+	Client Artifact  `json:"client"`
+	Server *Artifact `json:"server"`
 }
 
 type VersionJSON struct {

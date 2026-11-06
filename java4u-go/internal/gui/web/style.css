@@ -401,6 +401,38 @@ output { min-width: 80px; font-weight: 700; }
 .list.installed li.off .mod-text { opacity: 0.55; }
 .btn.done { border-color: var(--line-strong); background: var(--surface-3); color: var(--green); cursor: default; }
 .view-link { color: var(--muted); font-size: 12.5px; }
+.console {
+  height: 260px; margin: 10px 0; padding: 10px 12px; overflow: auto;
+  border: 1px solid var(--line); border-radius: 8px; background: #070a08;
+  font: 12px/1.45 ui-monospace, Consolas, "Cascadia Mono", Menlo, monospace;
+  white-space: pre-wrap; word-break: break-all;
+}
+.check.eula { margin: 8px 0; }
+
+/* Browse / Installed tabs */
+.seg { display: inline-flex; padding: 3px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-2); }
+.seg-btn { border: 0; border-radius: 7px; padding: 6px 16px; background: transparent; color: var(--muted); font-family: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
+.seg-btn.on { background: linear-gradient(#2fae3c, #22872d); color: #fff; }
+
+/* On/off switch */
+.switch { position: relative; display: inline-block; width: 42px; height: 24px; flex: none; }
+.switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 1; }
+.switch .track { position: absolute; inset: 0; border-radius: 12px; background: #3a443e; transition: background 0.15s; }
+.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.switch input:checked + .track { background: var(--green-2); }
+.switch input:checked + .track::after { transform: translateX(18px); }
+.switch input:focus-visible + .track { outline: 2px solid rgba(69, 214, 81, 0.6); outline-offset: 2px; }
+.switch input:disabled + .track { opacity: 0.5; }
+
+.pack-rows { display: flex; flex-direction: column; gap: 8px; }
+.pack-row { display: flex; align-items: center; gap: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.pack-row.off .pack-row-text { opacity: 0.55; }
+.pack-row-text { flex: 1; min-width: 0; }
+.pack-row-text small { color: var(--muted); display: block; }
+.browse-grid.compact { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin: 8px 0; }
+.browse-grid.compact .browse-card { padding: 10px; grid-template-columns: 44px 1fr; }
+.browse-grid.compact .browse-card img, .browse-grid.compact .browse-card .noimg { width: 44px; height: 44px; }
+.server-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 6px; box-shadow: 0 0 6px var(--green); }
 .list.wallpapers img { width: 120px; height: 50px; object-fit: cover; border-radius: 6px; }
 .list.wallpapers .name { flex: 1; }
 

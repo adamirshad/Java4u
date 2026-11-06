@@ -21,28 +21,13 @@ const (
 // sizes (milliseconds instead of re-hashing thousands of assets). fullVerify forces SHA1
 // checks again, for repairing corrupted files.
 func InstallVersion(ctx context.Context, c *http.Client, dirs Dirs, id string, fullVerify bool, progress Progress) (*VersionJSON, error) {
-	jsonPath := dirs.VersionJSON(id)
 	marker := filepath.Join(dirs.VersionDir(id), okMarker)
 	verify := VerifySize
 	if fullVerify || !exists(marker) {
 		verify = VerifyHash
 	}
 
-	if !exists(jsonPath) {
-		m, err := FetchManifest(ctx, c)
-		if err != nil {
-			return nil, err
-		}
-		entry := m.Find(id)
-		if entry == nil {
-			return nil, fmt.Errorf("unknown Minecraft version: %s", id)
-		}
-		task := DownloadTask{URL: entry.URL, Dest: jsonPath, SHA1: entry.SHA1, Size: UnknownSize}
-		if err := DownloadAll(ctx, c, []DownloadTask{task}, "version", progress, VerifyHash); err != nil {
-			return nil, err
-		}
-	}
-	v, err := LoadVersionJSON(jsonPath)
+	v, err := ensureVersionJSON(ctx, c, dirs, id, progress)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +74,26 @@ func InstallVersion(ctx context.Context, c *http.Client, dirs Dirs, id string, f
 		return nil, err
 	}
 	return v, nil
+}
+
+// ensureVersionJSON downloads a version's JSON from Mojang's manifest the first time.
+func ensureVersionJSON(ctx context.Context, c *http.Client, dirs Dirs, id string, progress Progress) (*VersionJSON, error) {
+	jsonPath := dirs.VersionJSON(id)
+	if !exists(jsonPath) {
+		m, err := FetchManifest(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		entry := m.Find(id)
+		if entry == nil {
+			return nil, fmt.Errorf("unknown Minecraft version: %s", id)
+		}
+		task := DownloadTask{URL: entry.URL, Dest: jsonPath, SHA1: entry.SHA1, Size: UnknownSize}
+		if err := DownloadAll(ctx, c, []DownloadTask{task}, "version", progress, VerifyHash); err != nil {
+			return nil, err
+		}
+	}
+	return LoadVersionJSON(jsonPath)
 }
 
 func exists(path string) bool {
