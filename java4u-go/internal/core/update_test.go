@@ -4,7 +4,9 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -14,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -61,13 +64,22 @@ func TestApplyUpdate(t *testing.T) {
 	sum := sha256.Sum256(zipData)
 	good := hex.EncodeToString(sum[:]) + "  " + asset + "\n"
 
+	pub, priv, _ := ed25519.GenerateKey(nil)
+	oldKeys := ReleaseKeys
+	ReleaseKeys = []string{base64.StdEncoding.EncodeToString(pub)}
+	defer func() { ReleaseKeys = oldKeys }()
+	signFor := func(tag, list string) string { return SignJava4URelease(priv, tag, []byte(list)) + "\n" }
+
 	sums := good
+	sig := signFor("v9.9.9", good)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/zip":
 			w.Write(zipData)
 		case "/sums":
 			w.Write([]byte(sums))
+		case "/sig":
+			w.Write([]byte(sig))
 		}
 	}))
 	defer srv.Close()
@@ -76,7 +88,7 @@ func TestApplyUpdate(t *testing.T) {
 	releaseScheme = "http"
 	defer func() { delete(releaseHosts, u.Host); releaseScheme = "https" }()
 
-	rel := &Release{Tag: "v9.9.9", Assets: []ReleaseAsset{{Name: asset, URL: srv.URL + "/zip"}, {Name: "checksums.txt", URL: srv.URL + "/sums"}}}
+	rel := &Release{Tag: "v9.9.9", Assets: []ReleaseAsset{{Name: asset, URL: srv.URL + "/zip"}, {Name: "checksums.txt", URL: srv.URL + "/sums"}, {Name: ReleaseSigName, URL: srv.URL + "/sig"}}}
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "java4u-gui"+ext), []byte("old gui"), 0o755)
 
@@ -93,10 +105,29 @@ func TestApplyUpdate(t *testing.T) {
 		t.Fatal("CLI was added though it wasn't installed")
 	}
 
-	// A bad checksum must leave everything alone.
+	// A bad checksum must leave everything alone, even when the list is signed.
 	sums = "0000000000000000000000000000000000000000000000000000000000000000  " + asset + "\n"
+	sig = signFor("v9.9.9", sums)
 	if err := ApplyUpdate(context.Background(), srv.Client(), rel, dir, nil); err == nil {
 		t.Fatal("bad checksum accepted")
+	}
+
+	// Signatures for another version, by another key, or missing are refused.
+	sums = good
+	_, other, _ := ed25519.GenerateKey(nil)
+	for name, s := range map[string]string{
+		"other version": signFor("v9.9.8", good),
+		"other key":     SignJava4URelease(other, "v9.9.9", []byte(good)),
+		"garbage":       "not a signature",
+	} {
+		sig = s
+		if err := ApplyUpdate(context.Background(), srv.Client(), rel, dir, nil); err == nil || !strings.Contains(err.Error(), "signed") {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	unsigned := &Release{Tag: rel.Tag, Assets: rel.Assets[:2]}
+	if err := ApplyUpdate(context.Background(), srv.Client(), unsigned, dir, nil); err == nil || !strings.Contains(err.Error(), "signed") {
+		t.Fatalf("unsigned release: %v", err)
 	}
 	if b, _ := os.ReadFile(filepath.Join(dir, "java4u-gui"+ext)); string(b) != "new gui" {
 		t.Fatalf("file changed after a failed update: %q", b)
@@ -104,7 +135,7 @@ func TestApplyUpdate(t *testing.T) {
 
 	// Downloads from other hosts are refused.
 	rel.Assets[0].URL = "https://example.com/zip"
-	sums = good
+	sums, sig = good, signFor("v9.9.9", good)
 	if err := ApplyUpdate(context.Background(), srv.Client(), rel, dir, nil); err == nil {
 		t.Fatal("download from an unknown host accepted")
 	}

@@ -16,8 +16,6 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"context"
-	"crypto/ed25519"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -165,18 +163,8 @@ func HorizonProgram(dirs Dirs) (string, error) {
 
 // verifyHorizonSums checks that one of Horizon's keys signed sums for tag.
 func verifyHorizonSums(tag string, sums, sigs []byte) error {
-	msg := append([]byte("horizon release "+tag+"\n"), sums...)
-	for _, k := range horizonKeys {
-		key, err := base64.StdEncoding.DecodeString(k)
-		if err != nil || len(key) != ed25519.PublicKeySize {
-			continue
-		}
-		for _, line := range strings.Fields(string(sigs)) {
-			sig, err := base64.StdEncoding.DecodeString(line)
-			if err == nil && ed25519.Verify(key, msg, sig) {
-				return nil
-			}
-		}
+	if verifyReleaseSigs("horizon", tag, sums, sigs, horizonKeys) {
+		return nil
 	}
 	return fmt.Errorf("Horizon %s isn't signed with Horizon's release key, so it was not installed", tag)
 }

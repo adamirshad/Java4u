@@ -121,7 +121,7 @@ public final class Main {
 				"Chunky runs Fabric mods by providing the Fabric Loader API"), null, null, null));
 		String mixinExtras = "0.0.0";
 		try {
-			mixinExtras = com.llamalad7.mixinextras.MixinExtrasBootstrap.getVersion();
+			mixinExtras = com.llamalad7.mixinextras.service.MixinExtrasVersion.LATEST.toString();
 		} catch (Throwable ignored) {
 			// MixinExtras missing; mods that need it will report the missing dependency.
 		}

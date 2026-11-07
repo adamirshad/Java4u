@@ -3,7 +3,10 @@
 // java that includes the jdk.compiler module (Mojang's own runtime does). Run it from the
 // java4u-go folder:
 //
-//	go run ./tools/buildchunky
+//	go run ./tools/buildchunky         # build the jar
+//	go run ./tools/buildchunky -test   # build it, then compile and run chunky/test
+//
+// Deprecation warnings fail the build, so they're fixed as they appear.
 package main
 
 import (
@@ -30,14 +33,15 @@ func main() {
 	src := flag.String("src", "chunky", "Chunky source folder (with src/ and resources/)")
 	out := flag.String("out", filepath.Join("internal", "chunky", "dist", "chunky.jar"), "jar to write")
 	java := flag.String("java", "", "javac, or a java that has the jdk.compiler module (default: JAVA_HOME, then PATH)")
+	test := flag.Bool("test", false, "also compile and run Chunky's tests (chunky/test)")
 	flag.Parse()
-	if err := build(*src, *out, *java); err != nil {
+	if err := build(*src, *out, *java, *test); err != nil {
 		fmt.Fprintln(os.Stderr, "buildchunky:", err)
 		os.Exit(1)
 	}
 }
 
-func build(src, out, javaFlag string) error {
+func build(src, out, javaFlag string, test bool) error {
 	compiler, err := findCompiler(javaFlag)
 	if err != nil {
 		return err
@@ -61,8 +65,45 @@ func build(src, out, javaFlag string) error {
 		return err
 	}
 
+	tmp, err := os.MkdirTemp("", "chunky-build")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmp)
+	classes := filepath.Join(tmp, "classes")
+	if err := compile(compiler, filepath.Join(src, "src"), classpath, classes, tmp); err != nil {
+		return err
+	}
+
+	if err := writeJar(out, classes, filepath.Join(src, "resources")); err != nil {
+		return err
+	}
+	st, _ := os.Stat(out)
+	fmt.Printf("wrote %s (%d KB)\n", out, st.Size()/1024)
+
+	if !test {
+		return nil
+	}
+	testClasses := filepath.Join(tmp, "test-classes")
+	testCP := append([]string{classes, filepath.Join(src, "resources")}, classpath...)
+	if err := compile(compiler, filepath.Join(src, "test"), testCP, testClasses, tmp); err != nil {
+		return err
+	}
+	java := javaFor(compiler)
+	fmt.Println("running Chunky's tests...")
+	cmd := exec.Command(java, "-cp", strings.Join(append([]string{testClasses}, testCP...), string(os.PathListSeparator)),
+		"dev.java4u.chunky.test.TestMain")
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("Chunky's tests failed: %w", err)
+	}
+	return nil
+}
+
+// compile runs javac on every .java file under dir, writing classes to out.
+func compile(compiler []string, dir string, classpath []string, out, tmp string) error {
 	var sources []string
-	err = filepath.WalkDir(filepath.Join(src, "src"), func(p string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() && strings.HasSuffix(p, ".java") {
 			sources = append(sources, p)
 		}
@@ -72,16 +113,9 @@ func build(src, out, javaFlag string) error {
 		return err
 	}
 	if len(sources) == 0 {
-		return fmt.Errorf("no Java sources under %s", filepath.Join(src, "src"))
+		return fmt.Errorf("no Java sources under %s", dir)
 	}
-
-	tmp, err := os.MkdirTemp("", "chunky-build")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(tmp)
-	classes := filepath.Join(tmp, "classes")
-	argfile := filepath.Join(tmp, "sources.txt")
+	argfile := filepath.Join(tmp, filepath.Base(out)+"-sources.txt")
 	var quoted []string
 	for _, s := range sources {
 		abs, _ := filepath.Abs(s)
@@ -90,24 +124,34 @@ func build(src, out, javaFlag string) error {
 	if err := os.WriteFile(argfile, []byte(strings.Join(quoted, "\n")), 0o644); err != nil {
 		return err
 	}
-
 	args := append(append([]string{}, compiler[1:]...),
-		"--release", "21", "-encoding", "UTF-8", "-nowarn",
+		"--release", "21", "-encoding", "UTF-8", "-Xlint:deprecation,removal", "-Werror",
 		"-cp", strings.Join(classpath, string(os.PathListSeparator)),
-		"-d", classes, "@"+argfile)
-	fmt.Printf("compiling %d Java files...\n", len(sources))
+		"-d", out, "@"+argfile)
+	fmt.Printf("compiling %d Java files in %s...\n", len(sources), dir)
 	cmd := exec.Command(compiler[0], args...)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("javac failed: %w", err)
 	}
-
-	if err := writeJar(out, classes, filepath.Join(src, "resources")); err != nil {
-		return err
-	}
-	st, _ := os.Stat(out)
-	fmt.Printf("wrote %s (%d KB)\n", out, st.Size()/1024)
 	return nil
+}
+
+// javaFor returns the java launcher that goes with compiler: java itself, or the java
+// beside javac.
+func javaFor(compiler []string) string {
+	if len(compiler) > 1 {
+		return compiler[0] // java -m jdk.compiler/...
+	}
+	name := "java"
+	if runtime.GOOS == "windows" {
+		name = "java.exe"
+	}
+	beside := filepath.Join(filepath.Dir(compiler[0]), name)
+	if _, err := os.Stat(beside); err == nil {
+		return beside
+	}
+	return name
 }
 
 // findCompiler returns the command (and leading arguments) that runs javac.
