@@ -343,7 +343,27 @@ function ramChoices(inst) {
   return opts;
 }
 
+// "horizon" when Launch opens Horizon (a Rust rewrite of Minecraft), otherwise "java".
+const game = () => (data?.settings.game === "horizon" && data.horizon?.supported ? "horizon" : "java");
+
+function renderGame() {
+  const h = data.horizon || {};
+  const rust = h.supported
+    ? `Rust · Horizon${h.installed ? ` ${h.installed}` : ""}`
+    : "Rust · Horizon (not available on this computer)";
+  const sel = $("sel-game");
+  fillSelect(sel, [["java", "Java Edition"], ["horizon", rust]], game());
+  sel.options[1].disabled = !h.supported;
+  const isRust = game() === "horizon";
+  $("q-game").textContent = isRust ? "Rust · Horizon" : "Java Edition";
+  document.querySelectorAll(".qcard.java-only").forEach((c) => c.classList.toggle("off", isRust));
+  $("footer-game").textContent = isRust ? "Horizon (Rust)" : "Minecraft Java Edition";
+}
+
+$("sel-game").addEventListener("change", (e) => saveSettings({ game: e.target.value }));
+
 function renderQuick() {
+  renderGame();
   const inst = current();
   fillSelect($("sel-instance"), data.instances.map((i) => [i.name, `Minecraft ${i.version}  (${i.name})`]), selected);
   $("q-version").textContent = inst ? `Minecraft ${inst.version}${inst.loader === "chunky" ? " · Chunky" : ""}` : "No versions yet";
@@ -390,6 +410,7 @@ $("more-options").addEventListener("click", () => { editorFor = null; go("versio
 // ------------------------------------------------------------ launch
 
 function launchMode() {
+  if (data && game() === "horizon") return "horizon";
   if (!data || !current()) return "noinstance";
   if (!offline() && !account) return "noaccount";
   return "ok";
@@ -405,7 +426,9 @@ function renderLaunch() {
     st.running ? "Playing..." :
     st.busy && st.task === "modpack" ? "Installing modpack..." :
     st.busy && st.task === "update" ? "Updating Java4U..." :
+    st.busy && st.task === "horizon" ? "Getting Horizon..." :
     st.busy ? "Preparing..." :
+    mode === "horizon" ? "Open Horizon" :
     mode === "noinstance" ? "Add a Version" :
     mode === "noaccount" ? "Sign In to Play" : "Launch Game";
 }
@@ -414,6 +437,16 @@ $("launch").addEventListener("click", () => {
   const mode = launchMode();
   if (mode === "noinstance") return go("versions");
   if (mode === "noaccount") return go("account");
+  if (mode === "horizon") {
+    return run(async () => {
+      await api("/api/play", { game: "horizon" });
+      lastState.busy = true;
+      lastState.task = "horizon";
+      renderLaunch();
+      setStatus("Getting Horizon...", "busy");
+      poll();
+    });
+  }
   run(async () => {
     await api("/api/play", {
       instance: selected,
@@ -915,7 +948,8 @@ async function poll() {
     const loginFinished = lastState.logging_in && !st.logging_in;
     const packFinished = lastState.busy && !st.busy && lastState.task === "modpack";
     const updateFinished = lastState.busy && !st.busy && lastState.task === "update";
-    const launchFinished = lastState.busy && !st.busy && !packFinished && !updateFinished;
+    const horizonFinished = lastState.busy && !st.busy && lastState.task === "horizon";
+    const launchFinished = lastState.busy && !st.busy && !packFinished && !updateFinished && !horizonFinished;
     lastState = st;
     appendLog(st.log, st.log_reset);
     logEpoch = st.log_epoch;
@@ -939,14 +973,19 @@ async function poll() {
     } else if (st.running) {
       setStatus("Minecraft is running.", "busy");
     } else if (st.busy) {
-      setStatus(p ? `Downloading ${p.stage}...` : st.task === "update" ? "Updating Java4U..." : "Preparing Minecraft...", "busy");
+      setStatus(p ? `Downloading ${p.stage}...` : st.task === "update" ? "Updating Java4U..." :
+        st.task === "horizon" ? "Checking Horizon..." : "Preparing Minecraft...", "busy");
+    } else if (horizonFinished) {
+      const last = $("log").textContent.trim().split("\n").pop() || "";
+      if (last.startsWith("Error:")) { setStatus(last, "err"); show($("drawer"), true); }
+      else setStatus(last || "Opened the Horizon launcher.");
     } else if (launchFinished) {
       const last = $("log").textContent.trim().split("\n").pop() || "";
       if (last.startsWith("Error:")) { setStatus(last, "err"); show($("drawer"), true); }
       else setStatus("Game closed. Launcher ready!");
     }
 
-    if (loginFinished || updateFinished) await refresh();
+    if (loginFinished || updateFinished || horizonFinished) await refresh();
     if (packFinished) {
       // Select the new pack's version and show it on Home, ready to play.
       await refresh();

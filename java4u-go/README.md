@@ -137,6 +137,33 @@ Each version's editor lists its worlds (newest first, with icon and size) and sc
 (click one to enlarge). **Open folder** shows them in your file manager. The Account page shows
 a 3D model of your skin that you can drag to turn.
 
+## Rust edition (Horizon)
+
+The **Game** card on Home picks what **Launch** plays: **Java Edition** (run by Java4U) or
+**Rust · Horizon**. [Horizon](https://github.com/horizon-rust/horizon) is an open-source rewrite
+of Minecraft: Java Edition in Rust, made by other developers. Java4U doesn't run Horizon's game
+itself. It installs Horizon's own launcher, which signs you in, downloads the game from Mojang
+and runs it. You still need to own Minecraft: Java Edition.
+
+With Rust picked, **Open Horizon** downloads Horizon's newest launcher release, or updates the
+one already installed, then opens it. Before installing anything, Java4U:
+
+- checks the release's signed checksum list against Horizon's Ed25519 release key (copied into
+  `internal/core/horizon.go` from Horizon's `crates/horizon-release-sign/release-keys.txt`);
+- checks the download against that list;
+- refuses a release older than the one installed.
+
+The launcher lives in `horizon/` in Java4U's data folder. If GitHub can't be reached, the
+installed launcher opens as it is.
+
+Horizon can't run Java mods, so Chunky, mods and modpacks only apply to Java Edition. It has
+launchers for macOS, Windows (x64 and Arm) and Linux x86-64. From the command line:
+
+    java4u horizon             # install or update Horizon's launcher, then open it
+    java4u horizon --no-open   # install or update only
+
+If Horizon changes its release key, update `horizonKeys` in `internal/core/horizon.go`.
+
 ## Servers
 
 The **Servers** page runs your own dedicated server on this PC, with mods through Chunky:

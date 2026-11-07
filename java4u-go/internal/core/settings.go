@@ -16,7 +16,20 @@ type Settings struct {
 	// PlayOffline launches with OfflineUsername instead of a Microsoft account (testing only).
 	PlayOffline bool   `json:"play_offline"`
 	LastAccount string `json:"last_account,omitempty"`
+	// Game is what Launch plays: GameJava (the default) or GameHorizon.
+	Game string `json:"game,omitempty"`
 }
+
+// The games Launch can play.
+const (
+	// GameJava is Minecraft: Java Edition, run by Java4U.
+	GameJava = "java"
+	// GameHorizon is Horizon, a Rust rewrite of Java Edition, run by its own launcher.
+	GameHorizon = "horizon"
+)
+
+// ValidGame reports whether g is a game Launch can play ("" means GameJava).
+func ValidGame(g string) bool { return g == "" || g == GameJava || g == GameHorizon }
 
 func DefaultSettings() Settings {
 	return Settings{WallpaperDim: 0.45, OfflineUsername: "Player"}
