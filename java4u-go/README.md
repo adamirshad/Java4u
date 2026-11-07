@@ -53,10 +53,29 @@ build Chunky. Then run this from this folder:
 Push a version tag. The **Release** workflow builds every platform, puts the icon and version
 details into the Windows programs, builds the installers with Inno Setup
 (`packaging/windows/java4u.iss`) and the macOS disk image (`packaging/macos/build-dmg.sh`),
-writes `checksums.txt`, and publishes a GitHub Release:
+writes `checksums.txt`, signs it, and publishes a GitHub Release:
 
     git tag v0.2.0
     git push origin v0.2.0
+
+**Signed updates.** The release workflow signs `checksums.txt` into `checksums.txt.sig` with the
+`JAVA4U_RELEASE_KEY` repository secret: Ed25519 over `java4u release <tag>\n` followed by the
+list, so a signed list can't be passed off as another version. Java4U's updater checks the
+signature against the public keys in `core.ReleaseKeys` (`internal/core/signing.go`) before it
+downloads anything else, and refuses unsigned releases. If the secret is missing or doesn't
+match those keys, the workflow stops before publishing. To check a release by hand:
+
+    go run ./tools/signrelease verify v0.2.0 checksums.txt   # with checksums.txt.sig beside it
+
+Keep a copy of the private key somewhere safe, such as a password manager. If it's lost,
+releases can't be signed for existing installs, and players would have to download the next
+version by hand. To change keys:
+
+1. Make a new pair with `go run ./tools/signrelease keygen <file>`.
+2. Add the new public key to `core.ReleaseKeys`, keeping the old one, and release that version
+   signed with the old key.
+3. Once players have it, switch the secret to the new key and remove the old public key.
+   During the switch, `JAVA4U_RELEASE_KEY_NEXT` adds a second signature.
 
 A tag with a dash (`v0.2.0-rc.1`) is published as a pre-release, which the updater ignores. The
 installers are not code-signed yet: Windows SmartScreen warns on first run, and the Mac app is

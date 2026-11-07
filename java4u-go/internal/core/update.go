@@ -1,9 +1,10 @@
 package core
 
 // Self-update from GitHub Releases. Each release has one zip per platform
-// (java4u-<os>-<arch>.zip holding java4u and java4u-gui) and checksums.txt with their
-// SHA-256 sums. Updating downloads the zip, checks its sum, and swaps the binaries next to
-// the running one; the old files are kept as *.old until the next start.
+// (java4u-<os>-<arch>.zip holding java4u and java4u-gui), checksums.txt with their SHA-256
+// sums, and checksums.txt.sig signing that list (see signing.go). Updating checks the
+// signature, downloads the zip, checks its sum, and swaps the binaries next to the running
+// one; the old files are kept as *.old until the next start. Unsigned releases are refused.
 
 import (
 	"archive/zip"
@@ -149,12 +150,12 @@ func binaryNames() []string {
 // in exeDir (the folder of the running program when empty).
 func ApplyUpdate(ctx context.Context, c *http.Client, rel *Release, exeDir string, progress Progress) error {
 	name := UpdateAssetName(runtime.GOOS, runtime.GOARCH)
-	zipAsset, sums := rel.asset(name), rel.asset("checksums.txt")
+	zipAsset, sums, sigs := rel.asset(name), rel.asset("checksums.txt"), rel.asset(ReleaseSigName)
 	if zipAsset == nil {
 		return fmt.Errorf("release %s has no download for this computer (%s)", rel.Tag, name)
 	}
-	if sums == nil {
-		return fmt.Errorf("release %s has no checksums.txt, so it can't be checked", rel.Tag)
+	if sums == nil || sigs == nil {
+		return fmt.Errorf("release %s isn't signed, so it can't be checked; not installing it", rel.Tag)
 	}
 	if exeDir == "" {
 		exe, err := os.Executable()
@@ -176,6 +177,21 @@ func ApplyUpdate(ctx context.Context, c *http.Client, rel *Release, exeDir strin
 	sumsPath := filepath.Join(tmp, "checksums.txt")
 	if _, err := downloadRelease(ctx, c, sums.URL, sumsPath, 1<<20, nil); err != nil {
 		return fmt.Errorf("downloading checksums: %w", err)
+	}
+	sigsPath := filepath.Join(tmp, ReleaseSigName)
+	if _, err := downloadRelease(ctx, c, sigs.URL, sigsPath, 64<<10, nil); err != nil {
+		return fmt.Errorf("downloading the signature: %w", err)
+	}
+	sumsData, err := os.ReadFile(sumsPath)
+	if err != nil {
+		return err
+	}
+	sigsData, err := os.ReadFile(sigsPath)
+	if err != nil {
+		return err
+	}
+	if err := VerifyJava4URelease(rel.Tag, sumsData, sigsData); err != nil {
+		return err
 	}
 	want, err := checksumFor(sumsPath, name)
 	if err != nil {
