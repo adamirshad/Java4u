@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"embed"
 	"encoding/hex"
@@ -18,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -73,6 +75,7 @@ type Server struct {
 	lastSeen    time.Time
 
 	cache contentCache
+	disk  *diskCache // news, Modrinth lists and skins, kept between runs
 	// task says what busy is doing: "play", "modpack" or "update".
 	task string
 	srv  serverProc
@@ -100,6 +103,7 @@ func Start(dirs core.Dirs, addr string) (*Server, string, error) {
 		cancel:   cancel,
 		settings: core.LoadSettings(dirs),
 		lastSeen: time.Now(),
+		disk:     newDiskCache(filepath.Join(dirs.Root, "cache", "web")),
 	}
 
 	go s.fetchVersions()
@@ -126,15 +130,24 @@ func Start(dirs core.Dirs, addr string) (*Server, string, error) {
 func (s *Server) Done() <-chan struct{} { return s.ctx.Done() }
 
 func (s *Server) fetchVersions() {
+	// Show the list saved last time straight away; the fresh one replaces it below.
+	if m, err := core.LoadCachedManifest(s.dirs); err == nil {
+		s.mu.Lock()
+		s.versions = m.Versions
+		s.mu.Unlock()
+	}
 	m, err := core.FetchManifest(s.ctx, s.client)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err != nil {
-		s.versionsErr = err.Error()
-		s.status = "Could not load the version list: " + err.Error()
+		if len(s.versions) == 0 {
+			s.versionsErr = err.Error()
+			s.status = "Could not load the version list: " + err.Error()
+		}
 		return
 	}
 	s.versions = m.Versions
+	core.SaveCachedManifest(s.dirs, m)
 }
 
 func (s *Server) watchIdle() {
@@ -189,7 +202,7 @@ func (s *Server) setProgress(stage string, done, total int) {
 func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 	static, _ := fs.Sub(webFS, "web")
-	files := http.FileServer(http.FS(static))
+	files := withETags(static, http.FileServer(http.FS(static)))
 
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.Handle("GET /app.js", files)
@@ -845,4 +858,28 @@ func (s *Server) handleQuit(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
 		s.cancel()
 	}()
+}
+
+// withETags tags each built-in file with a hash of its contents, so a reloaded window
+// gets "304 Not Modified" instead of the whole file again. The files only change when
+// Java4U itself is updated, which changes the hashes too.
+func withETags(files fs.FS, next http.Handler) http.Handler {
+	tags := map[string]string{}
+	fs.WalkDir(files, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if data, err := fs.ReadFile(files, p); err == nil {
+			sum := sha256.Sum256(data)
+			tags["/"+p] = `"` + hex.EncodeToString(sum[:8]) + `"`
+		}
+		return nil
+	})
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if tag, ok := tags[r.URL.Path]; ok {
+			w.Header().Set("ETag", tag)
+			w.Header().Set("Cache-Control", "no-cache") // always check, but cheaply
+		}
+		next.ServeHTTP(w, r)
+	})
 }

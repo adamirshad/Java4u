@@ -95,15 +95,26 @@ type newsItem struct {
 	Link  string `json:"link"`
 }
 
+// writeRawJSON sends JSON that is already encoded.
+func writeRawJSON(w http.ResponseWriter, data []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write(data)
+}
+
 func (s *Server) handleNews(w http.ResponseWriter, r *http.Request) {
-	if v, ok := s.cache.get("news", 30*time.Minute); ok {
-		writeJSON(w, v)
-		return
-	}
-	body, err := s.fetch(r.Context(), newsURL)
+	data, err := s.disk.get(r.Context(), s.ctx, "news", 30*time.Minute, s.buildNews)
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, "Could not load news: "+err.Error())
 		return
+	}
+	writeRawJSON(w, data)
+}
+
+func (s *Server) buildNews(ctx context.Context) ([]byte, error) {
+	body, err := s.fetch(ctx, newsURL)
+	if err != nil {
+		return nil, err
 	}
 	var feed struct {
 		Entries []struct {
@@ -121,8 +132,7 @@ func (s *Server) handleNews(w http.ResponseWriter, r *http.Request) {
 		} `json:"entries"`
 	}
 	if err := json.Unmarshal(body, &feed); err != nil {
-		writeErr(w, http.StatusBadGateway, "Could not read news: "+err.Error())
-		return
+		return nil, fmt.Errorf("could not read news: %w", err)
 	}
 	items := []newsItem{}
 	for _, e := range feed.Entries {
@@ -145,8 +155,7 @@ func (s *Server) handleNews(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	s.cache.put("news", items)
-	writeJSON(w, items)
+	return json.Marshal(items)
 }
 
 func imageURL(p string) string {
@@ -189,11 +198,21 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := fmt.Sprintf("browse|%s|%s|%d|%s", kind, query, limit, gameVersion)
-	if v, ok := s.cache.get(key, 10*time.Minute); ok {
-		writeJSON(w, v)
+	fresh := 30 * time.Minute
+	if query != "" {
+		fresh = 10 * time.Minute
+	}
+	data, err := s.disk.get(r.Context(), s.ctx, key, fresh, func(ctx context.Context) ([]byte, error) {
+		return s.buildBrowse(ctx, kind, query, limit, gameVersion)
+	})
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, "Could not reach Modrinth: "+err.Error())
 		return
 	}
+	writeRawJSON(w, data)
+}
 
+func (s *Server) buildBrowse(ctx context.Context, kind, query string, limit int, gameVersion string) ([]byte, error) {
 	facets := [][]string{{"project_type:" + kind}}
 	// Chunky runs Fabric mods and packs.
 	facets = append(facets, []string{"categories:fabric"})
@@ -224,10 +243,9 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		params.Set("query", query)
 		params.Set("index", "relevance")
 	}
-	body, err := s.fetch(r.Context(), modrinthAPI+"?"+params.Encode())
+	body, err := s.fetch(ctx, modrinthAPI+"?"+params.Encode())
 	if err != nil {
-		writeErr(w, http.StatusBadGateway, "Could not reach Modrinth: "+err.Error())
-		return
+		return nil, err
 	}
 	var res struct {
 		Hits []struct {
@@ -243,8 +261,7 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 		} `json:"hits"`
 	}
 	if err := json.Unmarshal(body, &res); err != nil {
-		writeErr(w, http.StatusBadGateway, "Could not read Modrinth reply: "+err.Error())
-		return
+		return nil, fmt.Errorf("could not read Modrinth's reply: %w", err)
 	}
 	out := []project{}
 	for _, h := range res.Hits {
@@ -264,8 +281,7 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 			URL:         "https://modrinth.com/" + kind + "/" + url.PathEscape(h.Slug),
 		})
 	}
-	s.cache.put(key, out)
-	writeJSON(w, out)
+	return json.Marshal(out)
 }
 
 // modrinthImage keeps only images from Modrinth's CDN (the page's CSP allows no others).
@@ -312,13 +328,44 @@ type playerSkin struct {
 	slim bool
 }
 
-// fetchSkin looks the player up on Mojang's session server and downloads their skin.
-// Results are cached for a few hours.
+// savedSkin is how a downloaded skin is kept in the disk cache.
+type savedSkin struct {
+	Slim bool   `json:"slim"`
+	PNG  []byte `json:"png"`
+}
+
+// fetchSkin returns a player's skin. The download is kept on disk for a few hours (and
+// shown from there while it refreshes), and the decoded skin stays in memory.
 func (s *Server) fetchSkin(ctx context.Context, id string) (*playerSkin, error) {
 	key := "skin|" + strings.ToLower(id)
 	if v, ok := s.cache.get(key, 6*time.Hour); ok {
 		return v.(*playerSkin), nil
 	}
+	data, err := s.disk.get(ctx, s.ctx, key, 6*time.Hour, func(ctx context.Context) ([]byte, error) {
+		return s.downloadSkin(ctx, id)
+	})
+	if err != nil {
+		return nil, err
+	}
+	var saved savedSkin
+	if err := json.Unmarshal(data, &saved); err != nil {
+		return nil, err
+	}
+	img, err := png.Decode(bytes.NewReader(saved.PNG))
+	if err != nil {
+		return nil, err
+	}
+	b := img.Bounds()
+	if b.Dx() != 64 || (b.Dy() != 64 && b.Dy() != 32) {
+		return nil, errors.New("unexpected skin size")
+	}
+	sk := &playerSkin{img: normaliseSkin(img), slim: saved.Slim}
+	s.cache.put(key, sk)
+	return sk, nil
+}
+
+// downloadSkin looks the player up on Mojang's session server and downloads their skin.
+func (s *Server) downloadSkin(ctx context.Context, id string) ([]byte, error) {
 	body, err := s.fetch(ctx, profileAPI+id)
 	if err != nil {
 		return nil, err
@@ -366,17 +413,10 @@ func (s *Server) fetchSkin(ctx context.Context, id string) (*playerSkin, error) 
 	if err != nil {
 		return nil, err
 	}
-	img, err := png.Decode(bytes.NewReader(skinData))
-	if err != nil {
-		return nil, err
+	if _, err := png.DecodeConfig(bytes.NewReader(skinData)); err != nil {
+		return nil, fmt.Errorf("skin is not a PNG: %w", err)
 	}
-	b := img.Bounds()
-	if b.Dx() != 64 || (b.Dy() != 64 && b.Dy() != 32) {
-		return nil, errors.New("unexpected skin size")
-	}
-	sk := &playerSkin{img: normaliseSkin(img), slim: slim}
-	s.cache.put(key, sk)
-	return sk, nil
+	return json.Marshal(savedSkin{Slim: slim, PNG: skinData})
 }
 
 // normaliseSkin turns an old 64x32 skin into the 64x64 layout by copying the right arm

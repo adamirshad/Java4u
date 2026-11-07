@@ -504,18 +504,28 @@ function viewButton(url, label = "View") {
 let installed = { instance: null, mods: [] };
 const installedProjects = () => new Set(installed.mods.map((m) => m.project_id).filter(Boolean));
 
-async function loadInstalled() {
-  if (!selected) {
-    installed = { instance: null, mods: [] };
-  } else {
-    try {
-      installed = await api(`/api/mods?instance=${encodeURIComponent(selected)}`);
-    } catch {
-      installed = { instance: selected, mods: [] };
+// Several parts of the page ask for the mod list at once (for example on start-up);
+// calls for the same version that overlap share one request.
+let installedLoad = null;
+function loadInstalled(fresh = false) {
+  const want = selected;
+  // After a change (install, remove, toggle) pass fresh so an older request isn't reused.
+  if (!fresh && installedLoad && installedLoad.instance === want) return installedLoad.promise;
+  const promise = (async () => {
+    if (!want) {
+      installed = { instance: null, mods: [] };
+    } else {
+      try {
+        installed = await api(`/api/mods?instance=${encodeURIComponent(want)}`);
+      } catch {
+        installed = { instance: want, mods: [] };
+      }
     }
-  }
-  renderInstalled();
-  refreshInstallButtons();
+    renderInstalled();
+    refreshInstallButtons();
+  })().finally(() => { if (installedLoad?.promise === promise) installedLoad = null; });
+  installedLoad = { instance: want, promise };
+  return promise;
 }
 
 /** An Install button for a Modrinth project, plus a small link to its page. */
@@ -559,7 +569,7 @@ async function installMod(p, btn) {
     setStatus(`Could not install ${p.title}: ${e.message}`, "err");
   } finally {
     delete btn.dataset.busy;
-    await loadInstalled();
+    await loadInstalled(true);
   }
 }
 
@@ -580,7 +590,7 @@ function renderInstalled() {
     el("input", { type: "checkbox", checked: m.enabled, title: m.enabled ? "Turn off" : "Turn on",
       onchange: (e) => run(async () => {
         await api("/api/mods/toggle", { instance: inst.name, file: m.file, enabled: e.target.checked });
-        await loadInstalled();
+        await loadInstalled(true);
       }) }),
     el("div", { class: "mod-text" },
       el("strong", { textContent: m.name }), " ",
@@ -588,7 +598,7 @@ function renderInstalled() {
     el("button", { class: "btn", textContent: "Remove", onclick: () => run(async () => {
       if (!confirm(`Remove ${m.name}?`)) return;
       await api("/api/mods/remove", { instance: inst.name, file: m.file });
-      await loadInstalled();
+      await loadInstalled(true);
     }) }))));
 }
 
@@ -958,7 +968,7 @@ drawArt();
 drawIcons();
 run(async () => {
   await refresh();
-  await loadInstalled();
+  await loadInstalled(true);
   loadNews();
   loadHomeMods();
   loadHomePacks();
