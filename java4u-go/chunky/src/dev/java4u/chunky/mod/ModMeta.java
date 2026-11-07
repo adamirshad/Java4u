@@ -311,7 +311,9 @@ public final class ModMeta implements ModMetadata {
 		return Optional.ofNullable(e.getValue());
 	}
 
+	/** Deprecated in Fabric's API, but older mods still call it. */
 	@Override
+	@Deprecated
 	public boolean containsCustomElement(String key) {
 		return custom.containsKey(key);
 	}

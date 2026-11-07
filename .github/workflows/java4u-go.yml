@@ -27,8 +27,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - name: Build Chunky (the mod loader)
-        run: go run ./tools/buildchunky
+      - name: Build and test Chunky (the mod loader)
+        run: go run ./tools/buildchunky -test
       - run: go vet ./...
       - run: go test ./...
 

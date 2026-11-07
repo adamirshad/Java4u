@@ -46,6 +46,7 @@ build Chunky. Then run this from this folder:
     go build -ldflags "-H=windowsgui" ./cmd/java4u-gui     # Windows: no console window
     go build ./cmd/java4u-gui                              # macOS / Linux
     go test ./...
+    go run ./tools/buildchunky -test                       # Chunky's own tests
     go run ./tools/mkicon                                  # app icon into build/
 
 ## Releasing

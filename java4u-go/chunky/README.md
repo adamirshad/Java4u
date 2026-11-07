@@ -75,4 +75,22 @@ From `java4u-go`:
 
 This needs JDK 21 or newer. A `java` that includes the `jdk.compiler` module also works;
 pass it with `-java`. The tool downloads the pinned libraries, compiles Chunky, and writes
-`internal/chunky/dist/chunky.jar`, which Java4U embeds.
+`internal/chunky/dist/chunky.jar`, which Java4U embeds. Deprecation warnings stop the build,
+so fix them when a library update brings new ones.
+
+## Tests
+
+    go run ./tools/buildchunky -test
+
+This builds the jar, then compiles and runs the tests in `test/`. They cover:
+
+- JSON parsing;
+- versions and version ranges (`>=`, `~`, `^`, `1.21.x`, intervals);
+- `fabric.mod.json` parsing;
+- the dependency resolver: missing and wrong versions, `breaks`, newest copy, client and
+  server, `provides`, load order and cycles;
+- access wideners, which are checked by running a generated class through them with ASM.
+
+There's no test framework. `test/dev/java4u/chunky/test/TestMain.java` runs every
+`public static void test*()` method in the classes it lists. Add a new test class to that list.
+CI and release builds run these tests on every platform.

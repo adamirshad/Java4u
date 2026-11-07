@@ -29,8 +29,8 @@ jobs:
           java-version: "21"
       - name: Version from tag
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-      - name: Build Chunky (embedded in every Java4U binary)
-        run: go run ./tools/buildchunky
+      - name: Build and test Chunky (embedded in every Java4U binary)
+        run: go run ./tools/buildchunky -test
       - run: go test ./...
       - name: App icon
         run: go run ./tools/mkicon
