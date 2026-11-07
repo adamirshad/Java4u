@@ -13,7 +13,10 @@ import java.security.cert.Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
@@ -63,6 +66,12 @@ public final class ChunkyClassLoader extends SecureClassLoader {
 	}
 
 	private final List<Source> sources = new ArrayList<>();
+	/**
+	 * Folder inside the jars ("net/minecraft/client/") to the jars that have files in it, in
+	 * classpath order. Looking a class up then touches one or two jars instead of every jar
+	 * on the classpath, which matters with hundreds of mods and libraries.
+	 */
+	private final Map<String, Source[]> byFolder;
 	private final ClassLoader parent;
 	private final Set<String> invalid = ConcurrentHashMap.newKeySet();
 	private volatile Transformer transformer = Transformer.NONE;
@@ -70,13 +79,56 @@ public final class ChunkyClassLoader extends SecureClassLoader {
 	public ChunkyClassLoader(List<Path> classpath, ClassLoader parent) {
 		super("chunky", parent);
 		this.parent = parent;
-		for (Path p : classpath) {
+		// Opening a jar reads its index from disk; do them all at once.
+		sources.addAll(classpath.parallelStream().map(p -> {
 			try {
-				sources.add(new Source(p, this));
+				return new Source(p, this);
 			} catch (IOException e) {
 				throw new UncheckedIOException("can't open " + p, e);
 			}
+		}).toList());
+		byFolder = indexFolders(sources);
+	}
+
+	private static final Source[] NONE = new Source[0];
+
+	/** Reads every jar's file list (in parallel) and builds {@link #byFolder}. */
+	private static Map<String, Source[]> indexFolders(List<Source> sources) {
+		List<Set<String>> perJar = sources.parallelStream().map(s -> {
+			Set<String> folders = new HashSet<>();
+			s.jar.stream().forEach(e -> {
+				if (e.isDirectory()) return;
+				String name = e.getName();
+				folders.add(folderOf(name));
+				// Multi-release jars may keep a class only under META-INF/versions/N/.
+				if (name.startsWith("META-INF/versions/")) {
+					int slash = name.indexOf('/', "META-INF/versions/".length());
+					if (slash > 0) folders.add(folderOf(name.substring(slash + 1)));
+				}
+			});
+			return folders;
+		}).toList();
+
+		Map<String, List<Source>> build = new HashMap<>();
+		for (int i = 0; i < sources.size(); i++) {
+			for (String folder : perJar.get(i)) {
+				build.computeIfAbsent(folder, k -> new ArrayList<>(1)).add(sources.get(i));
+			}
 		}
+		Map<String, Source[]> out = new HashMap<>(build.size() * 2);
+		build.forEach((k, v) -> out.put(k, v.toArray(NONE)));
+		return out;
+	}
+
+	private static String folderOf(String entry) {
+		int slash = entry.lastIndexOf('/');
+		return slash < 0 ? "" : entry.substring(0, slash + 1);
+	}
+
+	/** The jars that may contain entry, in classpath order. */
+	private Source[] candidates(String entry) {
+		Source[] s = byFolder.get(folderOf(entry));
+		return s == null ? NONE : s;
 	}
 
 	public void setTransformer(Transformer t) {
@@ -130,7 +182,7 @@ public final class ChunkyClassLoader extends SecureClassLoader {
 
 	private Class<?> defineFromSources(String name) throws ClassNotFoundException {
 		String entry = name.replace('.', '/') + ".class";
-		for (Source s : sources) {
+		for (Source s : candidates(entry)) {
 			ZipEntry e = s.jar.getEntry(entry);
 			if (e == null) continue;
 			byte[] raw = read(s, e);
@@ -174,7 +226,7 @@ public final class ChunkyClassLoader extends SecureClassLoader {
 	public byte[] getPreMixinBytes(String name) throws IOException {
 		String entry = name.replace('.', '/') + ".class";
 		if (!parentOnly(name)) {
-			for (Source s : sources) {
+			for (Source s : candidates(entry)) {
 				ZipEntry e = s.jar.getEntry(entry);
 				if (e == null) continue;
 				try (InputStream in = s.jar.getInputStream(e)) {
@@ -209,7 +261,7 @@ public final class ChunkyClassLoader extends SecureClassLoader {
 	@Override
 	protected URL findResource(String name) {
 		String n = name.startsWith("/") ? name.substring(1) : name;
-		for (Source s : sources) {
+		for (Source s : candidates(n)) {
 			if (s.jar.getEntry(n) != null) return url(s, n);
 		}
 		return null;
@@ -226,7 +278,7 @@ public final class ChunkyClassLoader extends SecureClassLoader {
 	protected Enumeration<URL> findResources(String name) {
 		String n = name.startsWith("/") ? name.substring(1) : name;
 		List<URL> out = new ArrayList<>();
-		for (Source s : sources) {
+		for (Source s : candidates(n)) {
 			if (s.jar.getEntry(n) != null) out.add(url(s, n));
 		}
 		return Collections.enumeration(out);
@@ -235,7 +287,7 @@ public final class ChunkyClassLoader extends SecureClassLoader {
 	@Override
 	public InputStream getResourceAsStream(String name) {
 		String n = name.startsWith("/") ? name.substring(1) : name;
-		for (Source s : sources) {
+		for (Source s : candidates(n)) {
 			ZipEntry e = s.jar.getEntry(n);
 			if (e == null) continue;
 			try {

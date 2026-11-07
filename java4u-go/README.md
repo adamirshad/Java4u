@@ -173,6 +173,17 @@ JAVA_HOME or PATH.
   fetched.
 - **Account first:** launching checks your sign-in before downloading anything, so a missing
   account fails immediately.
+- **Java class archive:** Mojang's Java runtimes ship without the JDK's base class archive.
+  Java4U builds it once per runtime (under a second), so every launch starts the JVM faster.
+  Vanilla 26.3 reached the title screen about 10% sooner (8.0 s to 7.2 s). Set
+  `JAVA4U_NO_CDS=1` to skip it.
+- **Chunky start-up:** Chunky indexes which jar holds each package once at start, so loading
+  a class checks one or two jars instead of every jar on the classpath. Jars nested in mods
+  are cached by the checksum in the zip's index, so a launch no longer unpacks and hashes
+  them all. Mod jars are read in parallel.
+- **Instant home page:** news, Modrinth lists, skins and the version list are saved on disk.
+  The app shows the saved copy straight away, refreshes it in the background, and still has
+  something to show when you're offline.
 
 ## Microsoft sign-in
 

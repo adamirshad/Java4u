@@ -54,7 +54,7 @@ function renderPacks() {
         input.disabled = true;
         await api("/api/mods/toggle-all", { instance: p.instance, enabled: checked });
         await loadInstalledView();
-        if (p.instance === selected) loadInstalled();
+        if (p.instance === selected) loadInstalled(true);
       })),
       el("div", { class: "pack-row-text" },
         el("strong", { textContent: p.modpack }),
@@ -100,7 +100,7 @@ function renderPickedMods() {
       m.enabled = checked;
       renderPickedMods();
       refreshPackCounts();
-      if (pickedVersion === selected) loadInstalled();
+      if (pickedVersion === selected) loadInstalled(true);
     })),
     el("div", { class: "mod-text" },
       el("strong", { textContent: m.name }), " ",
@@ -109,7 +109,7 @@ function renderPickedMods() {
       if (!confirm(`Remove ${m.name}?`)) return;
       await api("/api/mods/remove", { instance: pickedVersion, file: m.file });
       await loadInstalledView();
-      if (pickedVersion === selected) loadInstalled();
+      if (pickedVersion === selected) loadInstalled(true);
     }) }))));
 }
 
@@ -123,7 +123,7 @@ async function setAllPicked(enabled) {
   await run(async () => {
     await api("/api/mods/toggle-all", { instance: pickedVersion, enabled });
     await loadInstalledView();
-    if (pickedVersion === selected) loadInstalled();
+    if (pickedVersion === selected) loadInstalled(true);
   });
 }
 

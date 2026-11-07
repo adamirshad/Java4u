@@ -169,6 +169,7 @@ func BuildCommand(dirs Dirs, v *VersionJSON, opts LaunchOptions) (*exec.Cmd, err
 		gameTpl = strings.Fields(v.MinecraftArguments)
 	}
 
+	ensureBaseCDS(dirs, opts.Java)
 	args := []string{fmt.Sprintf("-Xmx%dM", opts.MemoryMB)}
 	args = append(args, opts.ExtraJVMArgs...)
 	for _, a := range jvmTpl {
