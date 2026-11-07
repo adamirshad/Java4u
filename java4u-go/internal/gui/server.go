@@ -440,6 +440,7 @@ func (s *Server) handleData(w http.ResponseWriter, r *http.Request) {
 		"chunky":     map[string]any{"version": chunky.Version, "available": chunkyAvailable()},
 		"wallpapers": core.ListWallpapers(s.dirs),
 		"update":     s.updateInfo(),
+		"horizon":    horizonInfo(s.dirs),
 	})
 }
 
@@ -538,8 +539,13 @@ func (s *Server) handlePlay(w http.ResponseWriter, r *http.Request) {
 		Account         string `json:"account"`
 		Offline         bool   `json:"offline"`
 		OfflineUsername string `json:"offline_username"`
+		Game            string `json:"game"`
 	}
 	if !readJSON(w, r, &req) {
+		return
+	}
+	if req.Game == core.GameHorizon {
+		s.startHorizon(w)
 		return
 	}
 	inst, err := core.LoadInstance(s.dirs, req.Instance)
@@ -760,8 +766,13 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		PlayOffline     *bool    `json:"play_offline"`
 		LastAccount     *string  `json:"last_account"`
 		LastInstance    *string  `json:"last_instance"`
+		Game            *string  `json:"game"`
 	}
 	if !readJSON(w, r, &req) {
+		return
+	}
+	if req.Game != nil && !core.ValidGame(*req.Game) {
+		writeErr(w, http.StatusBadRequest, "unknown game")
 		return
 	}
 	if req.Wallpaper != nil && *req.Wallpaper != "" {
@@ -791,6 +802,9 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.LastInstance != nil {
 		s.settings.LastInstance = *req.LastInstance
+	}
+	if req.Game != nil {
+		s.settings.Game = *req.Game
 	}
 	settings := s.settings
 	s.mu.Unlock()

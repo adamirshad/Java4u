@@ -42,6 +42,8 @@ Usage:
   java4u account list                          list saved accounts
   java4u account remove <username>             forget a saved account
   java4u launch <instance> [--account NAME] [--offline NAME] [--java PATH] [--dry-run]
+  java4u horizon [--no-open]                   install or update Horizon (a Rust rewrite of Minecraft
+                                               by other developers) and open its launcher
   java4u version                               print the Java4U version
   java4u update [--check]                      update Java4U to the newest release
 
@@ -176,6 +178,8 @@ func run(ctx context.Context, args []string) error {
 		return a.update(rest)
 	case "launch":
 		return a.launch(rest)
+	case "horizon":
+		return a.horizon(rest)
 	}
 	return fmt.Errorf("unknown command %q (see `java4u help`)", cmd)
 }

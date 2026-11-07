@@ -264,7 +264,9 @@ main {
 .hero-arrow.right { right: 14px; }
 
 /* ------------------------------------------------------------ quick settings */
-.quick { display: grid; grid-template-columns: 1.15fr 1fr 1fr 0.85fr; gap: 14px; }
+.quick { display: grid; grid-template-columns: 1fr 1.15fr 1fr 1fr 0.85fr; gap: 14px; }
+/* Version, profile and RAM only apply to Java Edition. */
+.qcard.off { opacity: 0.4; pointer-events: none; }
 .qcard {
   position: relative;
   display: flex; align-items: center; gap: 16px;

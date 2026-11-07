@@ -82,19 +82,25 @@
       </div>
 
       <div class="quick">
-        <label class="qcard">
+        <label class="qcard" title="Java Edition is run by Java4U. Horizon is a Rust rewrite of Minecraft by other developers, with its own launcher.">
+          <div class="qicon" data-pixel="goose"></div>
+          <div class="qtext"><div class="qlabel">Game</div><div class="qvalue" id="q-game">Java Edition</div></div>
+          <span class="chev">&#9662;</span>
+          <select id="sel-game" aria-label="Game"></select>
+        </label>
+        <label class="qcard java-only">
           <div class="qicon" data-pixel="grass"></div>
           <div class="qtext"><div class="qlabel">Selected Version</div><div class="qvalue" id="q-version">-</div></div>
           <span class="chev">&#9662;</span>
           <select id="sel-instance" aria-label="Selected version"></select>
         </label>
-        <label class="qcard">
+        <label class="qcard java-only">
           <div class="qicon" data-pixel="goose-head"></div>
           <div class="qtext"><div class="qlabel">Profile</div><div class="qvalue" id="q-profile">-</div></div>
           <span class="chev">&#9662;</span>
           <select id="sel-profile" aria-label="Performance profile"></select>
         </label>
-        <label class="qcard">
+        <label class="qcard java-only">
           <div class="qicon" data-pixel="chip"></div>
           <div class="qtext"><div class="qlabel">RAM Allocation</div><div class="qvalue" id="q-ram">-</div></div>
           <span class="chev">&#9662;</span>
@@ -355,7 +361,8 @@
           <p><a href="https://github.com/adamirshad/Java4u" target="_blank" rel="noopener noreferrer">Source code on GitHub</a></p>
           <div class="row"><button id="check-update" class="btn">Check for updates</button><span id="update-result" class="muted"></span></div>
           <p class="muted">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
-            Mods and modpacks come from Modrinth; news comes from Mojang.</p>
+            Mods and modpacks come from Modrinth; news comes from Mojang. Horizon is made by its own
+            developers, not by Java4U.</p>
         </div>
       </div>
     </section>
@@ -373,7 +380,7 @@
   <span class="spacer"></span>
   <button class="link-btn" id="toggle-log">Game log</button>
   <span class="sep"></span>
-  <span class="globe">&#127760;</span> Minecraft Java Edition
+  <span class="globe">&#127760;</span> <span id="footer-game">Minecraft Java Edition</span>
   <span class="sep"></span>
   <span id="footer-version">Java4U</span>
 </footer>

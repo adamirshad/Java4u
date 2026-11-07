@@ -15,6 +15,9 @@ This project is not affiliated with Mojang or Microsoft.
 - **Modpacks:** install a Modrinth pack as a new ready-to-play version. Turn whole packs or
   single mods on and off.
 - **Servers:** run a dedicated server on your PC, with a console, commands and server mods.
+- **Rust edition:** choose Java Edition or Rust · Horizon on the Home page.
+  [Horizon](https://github.com/horizon-rust/horizon) is a Rust rewrite of Java Edition by other
+  developers. Java4U installs its launcher, checks the launcher's signature, and opens it.
 - **Desktop app and CLI:** a green, Minecraft-styled app (`java4u-gui`) and a command-line tool
   (`java4u`).
 
